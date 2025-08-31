@@ -27,6 +27,9 @@ class AlarmScheduler(private val context: Context) {
         
         val triggerTime = System.currentTimeMillis() + intervalMillis
         
+        // Speichere die geplante Zeit
+        preferenceHelper.setNextReminderTime(triggerTime)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             alarmManager.setExactAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
@@ -52,6 +55,12 @@ class AlarmScheduler(private val context: Context) {
         )
         
         alarmManager.cancel(pendingIntent)
+        // Lösche die gespeicherte Zeit
+        preferenceHelper.setNextReminderTime(0)
+    }
+
+    fun getNextReminderTime(): Long {
+        return preferenceHelper.getNextReminderTime()
     }
     
     companion object {

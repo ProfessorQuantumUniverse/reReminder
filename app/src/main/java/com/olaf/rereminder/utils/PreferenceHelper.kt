@@ -67,6 +67,20 @@ class PreferenceHelper(context: Context) {
         preferences.edit().putString(KEY_NOTIFICATION_TEXT, text).apply()
     }
 
+    fun getNotificationSoundType(): String =
+        preferences.getString(KEY_NOTIFICATION_SOUND_TYPE, SOUND_TYPE_RINGTONE) ?: SOUND_TYPE_RINGTONE
+
+    fun setNotificationSoundType(type: String) {
+        preferences.edit().putString(KEY_NOTIFICATION_SOUND_TYPE, type).apply()
+    }
+
+    fun getNextReminderTime(): Long =
+        preferences.getLong(KEY_NEXT_REMINDER_TIME, 0)
+
+    fun setNextReminderTime(time: Long) {
+        preferences.edit().putLong(KEY_NEXT_REMINDER_TIME, time).apply()
+    }
+
     companion object {
         private const val PREF_NAME = "reminder_preferences"
         private const val KEY_REMINDER_ENABLED = "reminder_enabled"
@@ -77,6 +91,11 @@ class PreferenceHelper(context: Context) {
         private const val KEY_VIBRATION_PATTERN = "vibration_pattern"
         private const val KEY_NOTIFICATION_TITLE = "notification_title"
         private const val KEY_NOTIFICATION_TEXT = "notification_text"
+        private const val KEY_NOTIFICATION_SOUND_TYPE = "notification_sound_type"
+        private const val KEY_NEXT_REMINDER_TIME = "next_reminder_time"
         private const val DEFAULT_INTERVAL = 60 // 1 Stunde
+
+        const val SOUND_TYPE_RINGTONE = "ringtone"
+        const val SOUND_TYPE_TTS = "tts"
     }
 }

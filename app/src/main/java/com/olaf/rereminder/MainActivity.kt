@@ -41,13 +41,17 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var viewModel: MainViewModel
 
+    // Move the permission state to class level so it can be accessed by the launcher
+    private var hasNotificationPermission by mutableStateOf(false)
+
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            // Permission granted, channel creation is handled in onCreate
+            // Update the state when permission is granted
+            hasNotificationPermission = true
         } else {
-            Toast.makeText(this, "Benachrichtigungsberechtigung ist für die App-Funktionalität erforderlich", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Notification permission is required for the app to function correctly.", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -56,18 +60,15 @@ class MainActivity : ComponentActivity() {
 
         viewModel = ViewModelProvider(this)[MainViewModel::class.java]
 
+        // Initialize permission state
+        hasNotificationPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+
         setContent {
             ReReminderTheme {
-                var hasNotificationPermission by remember {
-                    mutableStateOf(
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-                        } else {
-                            true
-                        }
-                    )
-                }
-
                 if (hasNotificationPermission) {
                     MainScreen(viewModel = viewModel)
                 } else {
@@ -81,6 +82,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Aktualisiere die nächste Erinnerungszeit wenn die App wieder aktiv wird
+        viewModel.refreshNextReminderTime()
     }
 }
 
@@ -105,7 +112,7 @@ fun MainScreen(viewModel: MainViewModel) {
                             context.startActivity(intent)
                         }
                     ) {
-                        Icon(Icons.Default.Settings, contentDescription = "Einstellungen")
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -127,14 +134,15 @@ fun MainScreen(viewModel: MainViewModel) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                shape = MaterialTheme.shapes.large
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(
                     modifier = Modifier.padding(vertical = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Erinnerungen",
+                        text = "Reminders",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 16.dp)
@@ -152,14 +160,22 @@ fun MainScreen(viewModel: MainViewModel) {
                             checked = isReminderEnabled,
                             onCheckedChange = { enabled ->
                                 viewModel.setReminderEnabled(enabled)
-                            }
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f),
+                                uncheckedThumbColor = MaterialTheme.colorScheme.onSurface,
+                                uncheckedBorderColor = MaterialTheme.colorScheme.outline,
+                                checkedBorderColor = MaterialTheme.colorScheme.primary
+                            )
                         )
                     }
 
                     Divider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
 
                     SettingsItem(
-                        title = "Erinnerungsintervall",
+                        title = "Reminder Intervall",
                         subtitle = intervalText,
                         onClick = { showIntervalDialog = true }
                     )
@@ -176,7 +192,7 @@ fun MainScreen(viewModel: MainViewModel) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     if (nextReminderTime.isNotEmpty()) {
                         Text(
-                            text = "Nächste Erinnerung um $nextReminderTime Uhr",
+                            text = "Next reminder at $nextReminderTime ",
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Spacer(modifier = Modifier.height(16.dp))

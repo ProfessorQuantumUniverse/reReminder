@@ -9,6 +9,6 @@
     <color name="white">#FFFFFFFF</color>
     <color name="md_theme_primary">#6750A4</color>
     <color name="md_theme_on_primary">#FFFFFF</color>
-    <color name="md_theme_secondary">#625B71</color>
+    <color name="md_theme_secondary">#2E3DD3</color>
     <color name="md_theme_on_secondary">#FFFFFF</color>
 </resources>

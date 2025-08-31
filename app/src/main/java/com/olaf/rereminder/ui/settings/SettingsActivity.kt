@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import com.olaf.rereminder.R
 import com.olaf.rereminder.ui.theme.ReReminderTheme
+import com.olaf.rereminder.utils.PreferenceHelper
 
 class SettingsActivity : ComponentActivity() {
 
@@ -62,7 +63,7 @@ class SettingsActivity : ComponentActivity() {
     private fun showRingtonePicker() {
         val intent = android.content.Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
             putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION)
-            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Erinnerungston auswählen")
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Select Notification Ringtone")
             putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, viewModel.getSelectedRingtone())
         }
         ringtonePickerLauncher.launch(intent)
@@ -84,17 +85,19 @@ fun SettingsScreen(
     val selectedVibrationPattern by viewModel.selectedVibrationPattern.observeAsState(1)
     val notificationTitle by viewModel.notificationTitle.observeAsState("")
     val notificationText by viewModel.notificationText.observeAsState("")
+    val notificationSoundType by viewModel.notificationSoundType.observeAsState(PreferenceHelper.SOUND_TYPE_RINGTONE)
 
     var showVibrationDialog by remember { mutableStateOf(false) }
     var showNotificationTextDialog by remember { mutableStateOf(false) }
+    var showSoundTypeDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Einstellungen", fontWeight = FontWeight.Bold) },
+                title = { Text("Settings", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackPressed) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Zurück")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -112,26 +115,34 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(vertical = 16.dp),
         ) {
-            SettingsGroup(title = "Benachrichtigungen") {
+            SettingsGroup(title = "Notifications") {
                 SettingsItem(
-                    title = "Benachrichtigungstext",
-                    subtitle = "Titel und Text anpassen",
+                    title = "Notification Text",
+                    subtitle = "Adjust the title and message",
                     onClick = { showNotificationTextDialog = true }
                 )
                 Divider(modifier = Modifier.padding(horizontal = 16.dp))
                 SwitchSettingItem(
-                    title = "Ton",
+                    title = "Sound",
                     checked = isSoundEnabled,
                     onCheckedChange = { viewModel.setSoundEnabled(it) }
                 )
                 SettingsItem(
-                    title = "Klingelton",
-                    subtitle = selectedRingtone?.let { uri ->
-                        RingtoneManager.getRingtone(context, uri)?.getTitle(context) ?: "Standard"
-                    } ?: "Standard",
-                    onClick = onShowRingtonePicker,
+                    title = "Sound or Text-to-Speech",
+                    subtitle = if (notificationSoundType == PreferenceHelper.SOUND_TYPE_TTS) "Text-to-Speech" else "Sound",
+                    onClick = { showSoundTypeDialog = true },
                     enabled = isSoundEnabled
                 )
+                if (notificationSoundType == PreferenceHelper.SOUND_TYPE_RINGTONE) {
+                    SettingsItem(
+                        title = "Sound",
+                        subtitle = selectedRingtone?.let { uri ->
+                            RingtoneManager.getRingtone(context, uri)?.getTitle(context) ?: "Default"
+                        } ?: "Default",
+                        onClick = onShowRingtonePicker,
+                        enabled = isSoundEnabled
+                    )
+                }
                 Divider(modifier = Modifier.padding(horizontal = 16.dp))
                 SwitchSettingItem(
                     title = "Vibration",
@@ -139,13 +150,13 @@ fun SettingsScreen(
                     onCheckedChange = { viewModel.setVibrationEnabled(it) }
                 )
                 SettingsItem(
-                    title = "Vibrationsmuster",
+                    title = "Vibration Pattern",
                     subtitle = when (selectedVibrationPattern) {
-                        0 -> "Kurz"
-                        1 -> "Standard"
-                        2 -> "Lang"
-                        3 -> "Pulsierend"
-                        else -> "Standard"
+                        0 -> "Short"
+                        1 -> "Default"
+                        2 -> "Long"
+                        3 -> "Pulsating"
+                        else -> "Default"
                     },
                     onClick = { showVibrationDialog = true },
                     enabled = isVibrationEnabled
@@ -178,6 +189,58 @@ fun SettingsScreen(
             }
         )
     }
+
+    if (showSoundTypeDialog) {
+        SoundTypeDialog(
+            currentSoundType = notificationSoundType,
+            onDismiss = { showSoundTypeDialog = false },
+            onSoundTypeSelected = { type ->
+                viewModel.setNotificationSoundType(type)
+                showSoundTypeDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun SoundTypeDialog(
+    currentSoundType: String,
+    onDismiss: () -> Unit,
+    onSoundTypeSelected: (String) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Sound/Text-to-speech") },
+        text = {
+            Column {
+                val soundTypes = listOf(
+                    "Sound" to PreferenceHelper.SOUND_TYPE_RINGTONE,
+                    "Text-to-Speech" to PreferenceHelper.SOUND_TYPE_TTS
+                )
+                soundTypes.forEach { (label, type) ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onSoundTypeSelected(type) }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = currentSoundType == type,
+                            onClick = { onSoundTypeSelected(type) }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(label)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
 }
 
 @Composable
@@ -243,10 +306,10 @@ fun SwitchSettingItem(title: String, checked: Boolean, onCheckedChange: (Boolean
 fun VibrationPatternDialog(currentPattern: Int, onDismiss: () -> Unit, onPatternSelected: (Int) -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Vibrationsmuster") },
+        title = { Text("Vibration Pattern") },
         text = {
             Column {
-                val patterns = listOf("Kurz", "Standard", "Lang", "Pulsierend")
+                val patterns = listOf("Short", "Default", "Long", "Pulsating")
                 patterns.forEachIndexed { index, pattern ->
                     Row(
                         Modifier
@@ -267,7 +330,7 @@ fun VibrationPatternDialog(currentPattern: Int, onDismiss: () -> Unit, onPattern
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Schließen")
+                Text("Close")
             }
         }
     )
@@ -287,13 +350,13 @@ fun NotificationTextDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Benachrichtigung anpassen") },
+        title = { Text("Adjust notification") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Titel") },
+                    label = { Text("Title") },
                     placeholder = { Text(defaultTitle) },
                     singleLine = true
                 )
@@ -307,12 +370,12 @@ fun NotificationTextDialog(
         },
         confirmButton = {
             Button(onClick = { onConfirm(title, text) }) {
-                Text("Speichern")
+                Text("Save")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Abbrechen")
+                Text("Dismiss")
             }
         }
     )

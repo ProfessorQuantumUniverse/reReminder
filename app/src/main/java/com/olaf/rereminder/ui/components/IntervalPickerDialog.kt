@@ -1,108 +1,119 @@
 package com.olaf.rereminder.ui.components
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 
 @Composable
 fun IntervalPickerDialogCompose(
     currentInterval: Int,
     onDismiss: () -> Unit,
-    onIntervalSelected: (hours: Int, minutes: Int) -> Unit
+    onIntervalSelected: (hours: Int, minutes: Int) -> Unit,
+    maxHours: Int = 72
 ) {
-    var selectedHours by remember { mutableStateOf(currentInterval / 60) }
-    var selectedMinutes by remember { mutableStateOf(maxOf(1, currentInterval % 60)) }
+    var selectedHours by remember { mutableStateOf((currentInterval / 60).coerceIn(0, maxHours)) }
+    var selectedMinutes by remember { mutableStateOf((currentInterval % 60).coerceIn(1, 59)) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(16.dp),
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Intervall einstellen",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
+    fun normalize() { if (selectedHours == 0 && selectedMinutes == 0) selectedMinutes = 1 }
 
-                Spacer(modifier = Modifier.height(24.dp))
-
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Set Reminder Interval",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp, bottom = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    TimeStepperValue(
+                        value = selectedHours,
+                        onValueChange = { selectedHours = it.coerceIn(0, maxHours); normalize() },
+                        range = 0..maxHours,
+                        label = "Hours" // nur für Semantics hier
+                    )
+
+                    Text(
+                        text = ":",
+                        style = MaterialTheme.typography.headlineMedium,
+                        textAlign = TextAlign.Center
+                    )
+
+                    TimeStepperValue(
+                        value = selectedMinutes,
+                        onValueChange = { selectedMinutes = it.coerceIn(0, 59); normalize() },
+                        range = 0..59,
+                        label = "Minutes"
+                    )
+                }
+                // Labels separat, damit vertikale Zentrierung nur auf Zahlen/Buttons wirkt
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TimePicker(
-                        label = "Stunden",
-                        value = selectedHours,
-                        onValueChange = { selectedHours = it },
-                        range = 0..23
-                    )
-                    Text(":", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(horizontal = 8.dp))
-                    TimePicker(
-                        label = "Minuten",
-                        value = selectedMinutes,
-                        onValueChange = { selectedMinutes = it },
-                        range = 1..59
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Abbrechen")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = { onIntervalSelected(selectedHours, selectedMinutes) }) {
-                        Text("OK")
-                    }
+                    Text("Hours", style = MaterialTheme.typography.labelMedium)
+                    Spacer(Modifier) // Platzhalter unter dem Doppelpunkt
+                    Text("Minutes", style = MaterialTheme.typography.labelMedium)
                 }
             }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Dismiss") } },
+        confirmButton = {
+            Button(onClick = { normalize(); onIntervalSelected(selectedHours, selectedMinutes) }) {
+                Text("OK", fontWeight = FontWeight.Bold)
+            }
         }
-    }
+    )
 }
 
 @Composable
-fun TimePicker(
-    label: String,
+private fun TimeStepperValue(
     value: Int,
     onValueChange: (Int) -> Unit,
-    range: IntRange
+    range: IntRange,
+    label: String
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, style = MaterialTheme.typography.labelMedium)
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { onValueChange((value - 1).coerceIn(range)) }) {
-                Text("-", style = MaterialTheme.typography.headlineSmall)
-            }
-
-            Text(
-                text = value.toString().padStart(2, '0'),
-                style = MaterialTheme.typography.headlineLarge,
-                modifier = Modifier.width(60.dp),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
-
-            IconButton(onClick = { onValueChange((value + 1).coerceIn(range)) }) {
-                Text("+", style = MaterialTheme.typography.headlineSmall)
-            }
-        }
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(IntrinsicSize.Min)
+    ) {
+        IconButton(
+            onClick = { if (value < range.last) onValueChange(value + 1) },
+            modifier = Modifier.semantics { contentDescription = "$label increase" }
+        ) { Icon(Icons.Default.KeyboardArrowUp, contentDescription = null) }
+        Text(
+            text = value.toString().padStart(2, '0'),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .padding(vertical = 2.dp)
+                .semantics { contentDescription = "$label Value $value" },
+            textAlign = TextAlign.Center
+        )
+        IconButton(
+            onClick = { if (value > range.first) onValueChange(value - 1) },
+            modifier = Modifier.semantics { contentDescription = "$label reduce" }
+        ) { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null) }
     }
 }
