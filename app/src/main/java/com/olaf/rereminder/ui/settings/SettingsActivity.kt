@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
+import com.olaf.rereminder.R
 import com.olaf.rereminder.ui.theme.ReReminderTheme
 
 class SettingsActivity : ComponentActivity() {
@@ -81,8 +82,11 @@ fun SettingsScreen(
     val isSoundEnabled by viewModel.isSoundEnabled.observeAsState(true)
     val isVibrationEnabled by viewModel.isVibrationEnabled.observeAsState(true)
     val selectedVibrationPattern by viewModel.selectedVibrationPattern.observeAsState(1)
+    val notificationTitle by viewModel.notificationTitle.observeAsState("")
+    val notificationText by viewModel.notificationText.observeAsState("")
 
     var showVibrationDialog by remember { mutableStateOf(false) }
+    var showNotificationTextDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -109,6 +113,12 @@ fun SettingsScreen(
                 .padding(vertical = 16.dp),
         ) {
             SettingsGroup(title = "Benachrichtigungen") {
+                SettingsItem(
+                    title = "Benachrichtigungstext",
+                    subtitle = "Titel und Text anpassen",
+                    onClick = { showNotificationTextDialog = true }
+                )
+                Divider(modifier = Modifier.padding(horizontal = 16.dp))
                 SwitchSettingItem(
                     title = "Ton",
                     checked = isSoundEnabled,
@@ -151,6 +161,20 @@ fun SettingsScreen(
             onPatternSelected = {
                 viewModel.setVibrationPattern(it)
                 showVibrationDialog = false
+            }
+        )
+    }
+
+    if (showNotificationTextDialog) {
+        NotificationTextDialog(
+            currentTitle = notificationTitle,
+            currentText = notificationText,
+            defaultTitle = context.getString(R.string.reminder_notification_title),
+            defaultText = context.getString(R.string.reminder_notification_text),
+            onDismiss = { showNotificationTextDialog = false },
+            onConfirm = { title, text ->
+                viewModel.setNotificationContent(title, text)
+                showNotificationTextDialog = false
             }
         )
     }
@@ -244,6 +268,51 @@ fun VibrationPatternDialog(currentPattern: Int, onDismiss: () -> Unit, onPattern
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text("Schließen")
+            }
+        }
+    )
+}
+
+@Composable
+fun NotificationTextDialog(
+    currentTitle: String,
+    currentText: String,
+    defaultTitle: String,
+    defaultText: String,
+    onDismiss: () -> Unit,
+    onConfirm: (title: String, text: String) -> Unit
+) {
+    var title by remember { mutableStateOf(currentTitle) }
+    var text by remember { mutableStateOf(currentText) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Benachrichtigung anpassen") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Titel") },
+                    placeholder = { Text(defaultTitle) },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text("Text") },
+                    placeholder = { Text(defaultText) }
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(title, text) }) {
+                Text("Speichern")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Abbrechen")
             }
         }
     )

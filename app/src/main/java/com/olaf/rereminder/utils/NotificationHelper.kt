@@ -17,10 +17,10 @@ import com.olaf.rereminder.MainActivity
 import com.olaf.rereminder.R
 
 object NotificationHelper {
-    
+
     private const val CHANNEL_ID = "reminder_channel"
     private const val NOTIFICATION_ID = 1001
-    
+
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             try {
@@ -83,10 +83,17 @@ object NotificationHelper {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
+            val notificationTitle = preferenceHelper.getNotificationTitle().ifEmpty {
+                context.getString(R.string.reminder_notification_title)
+            }
+            val notificationText = preferenceHelper.getNotificationText().ifEmpty {
+                context.getString(R.string.reminder_notification_text)
+            }
+
             val builder = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("Erinnerung")
-                .setContentText("Zeit für eine Pause!")
+                .setContentTitle(notificationTitle)
+                .setContentText(notificationText)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setContentIntent(pendingIntent)

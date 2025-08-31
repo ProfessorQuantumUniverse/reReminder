@@ -23,6 +23,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _selectedVibrationPattern = MutableLiveData<Int>()
     val selectedVibrationPattern: LiveData<Int> = _selectedVibrationPattern
 
+    private val _notificationTitle = MutableLiveData<String>()
+    val notificationTitle: LiveData<String> = _notificationTitle
+
+    private val _notificationText = MutableLiveData<String>()
+    val notificationText: LiveData<String> = _notificationText
+
     init {
         loadSettings()
     }
@@ -32,6 +38,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _isSoundEnabled.value = preferenceHelper.isSoundEnabled()
         _isVibrationEnabled.value = preferenceHelper.isVibrationEnabled()
         _selectedVibrationPattern.value = preferenceHelper.getVibrationPattern()
+        _notificationTitle.value = preferenceHelper.getNotificationTitle()
+        _notificationText.value = preferenceHelper.getNotificationText()
     }
 
     fun getSelectedRingtone(): Uri? {
@@ -56,5 +64,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setVibrationPattern(pattern: Int) {
         _selectedVibrationPattern.value = pattern
         preferenceHelper.setVibrationPattern(pattern)
+    }
+
+    fun setNotificationContent(title: String, text: String) {
+        _notificationTitle.value = title
+        _notificationText.value = text
+        preferenceHelper.setNotificationTitle(title)
+        preferenceHelper.setNotificationText(text)
     }
 }
