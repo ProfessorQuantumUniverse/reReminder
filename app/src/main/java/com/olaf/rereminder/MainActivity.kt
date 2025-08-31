@@ -15,8 +15,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,6 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
+import com.olaf.rereminder.ui.components.IntervalPickerDialogCompose
 import com.olaf.rereminder.ui.main.MainViewModel
 import com.olaf.rereminder.ui.settings.SettingsActivity
 import com.olaf.rereminder.ui.theme.ReReminderTheme
@@ -87,6 +90,9 @@ fun MainScreen(viewModel: MainViewModel) {
     val context = LocalContext.current
     val isReminderEnabled by viewModel.isReminderEnabled.observeAsState(false)
     val nextReminderTime by viewModel.nextReminderTime.observeAsState("")
+    val intervalText by viewModel.intervalText.observeAsState("")
+    var showIntervalDialog by remember { mutableStateOf(false) }
+
 
     Scaffold(
         topBar = {
@@ -115,7 +121,7 @@ fun MainScreen(viewModel: MainViewModel) {
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Card(
@@ -124,39 +130,39 @@ fun MainScreen(viewModel: MainViewModel) {
                 shape = MaterialTheme.shapes.large
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp),
+                    modifier = Modifier.padding(vertical = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
                         text = "Erinnerungen",
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 16.dp)
                     )
-
-                    Spacer(modifier = Modifier.height(24.dp))
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.fillMaxWidth()
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 8.dp)
                     ) {
                         Text("Status:", style = MaterialTheme.typography.titleMedium)
-                        Spacer(modifier = Modifier.width(16.dp))
                         Switch(
                             checked = isReminderEnabled,
                             onCheckedChange = { enabled ->
                                 viewModel.setReminderEnabled(enabled)
-                                if (enabled) {
-                                    viewModel.scheduleReminder(context)
-                                } else {
-                                    viewModel.cancelReminder(context)
-                                }
-                            },
-                            thumbContent = {
-                                // Animated icon can be placed here
                             }
                         )
                     }
+
+                    Divider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+
+                    SettingsItem(
+                        title = "Erinnerungsintervall",
+                        subtitle = intervalText,
+                        onClick = { showIntervalDialog = true }
+                    )
                 }
             }
 
@@ -175,22 +181,52 @@ fun MainScreen(viewModel: MainViewModel) {
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                     }
-
-                    Button(
-                        onClick = {
-                            viewModel.scheduleReminder(context)
-                            Toast.makeText(context, "Erinnerung neu geplant!", Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Text("Jetzt neu planen")
-                    }
                 }
             }
         }
     }
+    if (showIntervalDialog) {
+        IntervalPickerDialogCompose(
+            currentInterval = viewModel.getReminderInterval(),
+            onDismiss = { showIntervalDialog = false },
+            onIntervalSelected = { hours, minutes ->
+                viewModel.setReminderInterval(hours, minutes)
+                showIntervalDialog = false
+            }
+        )
+    }
 }
+
+@Composable
+fun SettingsItem(title: String, subtitle: String, onClick: () -> Unit, enabled: Boolean = true) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+            )
+        }
+        Icon(
+            Icons.Default.KeyboardArrowRight,
+            contentDescription = null,
+            tint = if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+        )
+    }
+}
+
 
 @Preview(showBackground = true)
 @Composable

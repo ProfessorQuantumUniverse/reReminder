@@ -5,25 +5,11 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.map
 import com.olaf.rereminder.utils.PreferenceHelper
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val preferenceHelper = PreferenceHelper(application)
-
-    private val _reminderInterval = MutableLiveData<Int>()
-    val intervalText: LiveData<String> = _reminderInterval.map { minutes ->
-        when {
-            minutes < 60 -> "$minutes Minuten"
-            minutes % 60 == 0 -> "${minutes / 60} Stunde${if (minutes / 60 > 1) "n" else ""}"
-            else -> {
-                val hours = minutes / 60
-                val mins = minutes % 60
-                "$hours Stunde${if (hours > 1) "n" else ""} $mins Minuten"
-            }
-        }
-    }
 
     private val _selectedRingtone = MutableLiveData<Uri?>()
     val selectedRingtone: LiveData<Uri?> = _selectedRingtone
@@ -42,21 +28,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun loadSettings() {
-        _reminderInterval.value = preferenceHelper.getReminderInterval()
         _selectedRingtone.value = preferenceHelper.getSelectedRingtone()
         _isSoundEnabled.value = preferenceHelper.isSoundEnabled()
         _isVibrationEnabled.value = preferenceHelper.isVibrationEnabled()
         _selectedVibrationPattern.value = preferenceHelper.getVibrationPattern()
-    }
-
-    fun getReminderInterval(): Int {
-        return _reminderInterval.value ?: preferenceHelper.getReminderInterval()
-    }
-
-    fun setReminderInterval(hours: Int, minutes: Int) {
-        val totalMinutes = hours * 60 + minutes
-        _reminderInterval.value = totalMinutes
-        preferenceHelper.setReminderInterval(totalMinutes)
     }
 
     fun getSelectedRingtone(): Uri? {

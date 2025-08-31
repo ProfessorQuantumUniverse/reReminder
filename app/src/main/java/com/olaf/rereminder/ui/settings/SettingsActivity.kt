@@ -22,7 +22,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
-import com.olaf.rereminder.ui.components.IntervalPickerDialogCompose
 import com.olaf.rereminder.ui.theme.ReReminderTheme
 
 class SettingsActivity : ComponentActivity() {
@@ -78,13 +77,11 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
 
-    val intervalText by viewModel.intervalText.observeAsState("")
     val selectedRingtone by viewModel.selectedRingtone.observeAsState()
     val isSoundEnabled by viewModel.isSoundEnabled.observeAsState(true)
     val isVibrationEnabled by viewModel.isVibrationEnabled.observeAsState(true)
     val selectedVibrationPattern by viewModel.selectedVibrationPattern.observeAsState(1)
 
-    var showIntervalDialog by remember { mutableStateOf(false) }
     var showVibrationDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -111,14 +108,6 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(vertical = 16.dp),
         ) {
-            SettingsGroup(title = "Allgemein") {
-                SettingsItem(
-                    title = "Erinnerungsintervall",
-                    subtitle = intervalText,
-                    onClick = { showIntervalDialog = true }
-                )
-            }
-
             SettingsGroup(title = "Benachrichtigungen") {
                 SwitchSettingItem(
                     title = "Ton",
@@ -153,17 +142,6 @@ fun SettingsScreen(
                 )
             }
         }
-    }
-
-    if (showIntervalDialog) {
-        IntervalPickerDialogCompose(
-            currentInterval = viewModel.getReminderInterval(),
-            onDismiss = { showIntervalDialog = false },
-            onIntervalSelected = { hours, minutes ->
-                viewModel.setReminderInterval(hours, minutes)
-                showIntervalDialog = false
-            }
-        )
     }
 
     if (showVibrationDialog) {
