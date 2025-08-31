@@ -1,6 +1,7 @@
 package com.olaf.rereminder.ui.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,108 +24,84 @@ fun IntervalPickerDialogCompose(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            shape = RoundedCornerShape(16.dp),
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Erinnerungsintervall",
+                    text = "Intervall einstellen",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Hours Section
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Stunden", style = MaterialTheme.typography.bodyMedium)
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Column {
-                            Button(
-                                onClick = { if (selectedHours < 23) selectedHours++ },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Text("+")
-                            }
-
-                            Text(
-                                text = selectedHours.toString(),
-                                style = MaterialTheme.typography.headlineMedium,
-                                modifier = Modifier
-                                    .padding(vertical = 8.dp)
-                                    .width(48.dp)
-                            )
-
-                            Button(
-                                onClick = { if (selectedHours > 0) selectedHours-- },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Text("-")
-                            }
-                        }
-                    }
-
-                    // Minutes Section
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Minuten", style = MaterialTheme.typography.bodyMedium)
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Column {
-                            Button(
-                                onClick = { if (selectedMinutes < 59) selectedMinutes++ },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Text("+")
-                            }
-
-                            Text(
-                                text = selectedMinutes.toString(),
-                                style = MaterialTheme.typography.headlineMedium,
-                                modifier = Modifier
-                                    .padding(vertical = 8.dp)
-                                    .width(48.dp)
-                            )
-
-                            Button(
-                                onClick = { if (selectedMinutes > 1) selectedMinutes-- },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Text("-")
-                            }
-                        }
-                    }
+                    TimePicker(
+                        label = "Stunden",
+                        value = selectedHours,
+                        onValueChange = { selectedHours = it },
+                        range = 0..23
+                    )
+                    Text(":", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(horizontal = 8.dp))
+                    TimePicker(
+                        label = "Minuten",
+                        value = selectedMinutes,
+                        onValueChange = { selectedMinutes = it },
+                        range = 1..59
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    TextButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
-                    ) {
+                    TextButton(onClick = onDismiss) {
                         Text("Abbrechen")
                     }
-
-                    Button(
-                        onClick = {
-                            onIntervalSelected(selectedHours, selectedMinutes)
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = { onIntervalSelected(selectedHours, selectedMinutes) }) {
                         Text("OK")
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun TimePicker(
+    label: String,
+    value: Int,
+    onValueChange: (Int) -> Unit,
+    range: IntRange
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, style = MaterialTheme.typography.labelMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { onValueChange((value - 1).coerceIn(range)) }) {
+                Text("-", style = MaterialTheme.typography.headlineSmall)
+            }
+
+            Text(
+                text = value.toString().padStart(2, '0'),
+                style = MaterialTheme.typography.headlineLarge,
+                modifier = Modifier.width(60.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+
+            IconButton(onClick = { onValueChange((value + 1).coerceIn(range)) }) {
+                Text("+", style = MaterialTheme.typography.headlineSmall)
             }
         }
     }

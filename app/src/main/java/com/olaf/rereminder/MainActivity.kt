@@ -1,5 +1,6 @@
 package com.olaf.rereminder
 
+import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -8,11 +9,18 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -21,11 +29,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.LiveData
 import com.olaf.rereminder.ui.main.MainViewModel
-import com.olaf.rereminder.ui.theme.ReReminderTheme
-import com.olaf.rereminder.utils.NotificationHelper
 import com.olaf.rereminder.ui.settings.SettingsActivity
+import com.olaf.rereminder.ui.theme.ReReminderTheme
+import com.olaf.rereminder.ui.components.PermissionRequestScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -35,9 +42,9 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            NotificationHelper.createNotificationChannel(this)
+            // Permission granted, channel creation is handled in onCreate
         } else {
-            Toast.makeText(this, "Benachrichtigungsberechtigung ist erforderlich", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Benachrichtigungsberechtigung ist für die App-Funktionalität erforderlich", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -46,32 +53,28 @@ class MainActivity : ComponentActivity() {
 
         viewModel = ViewModelProvider(this)[MainViewModel::class.java]
 
-        checkNotificationPermission()
-        NotificationHelper.createNotificationChannel(this)
-
         setContent {
             ReReminderTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    MainScreen(viewModel = viewModel)
+                var hasNotificationPermission by remember {
+                    mutableStateOf(
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                        } else {
+                            true
+                        }
+                    )
                 }
-            }
-        }
-    }
 
-    private fun checkNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            when {
-                ContextCompat.checkSelfPermission(
-                    this,
-                    android.Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED -> {
-                    // Berechtigung bereits erteilt
-                }
-                else -> {
-                    requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                if (hasNotificationPermission) {
+                    MainScreen(viewModel = viewModel)
+                } else {
+                    PermissionRequestScreen {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            hasNotificationPermission = true
+                        }
+                    }
                 }
             }
         }
@@ -82,25 +85,13 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(viewModel: MainViewModel) {
     val context = LocalContext.current
-
-    // Verwende State statt observeAsState
-    var isReminderEnabled by remember { mutableStateOf(false) }
-    var nextReminderTime by remember { mutableStateOf("") }
-
-    // Observer für LiveData
-    LaunchedEffect(viewModel) {
-        viewModel.isReminderEnabled.observeForever { enabled ->
-            isReminderEnabled = enabled
-        }
-        viewModel.nextReminderTime.observeForever { time ->
-            nextReminderTime = time
-        }
-    }
+    val isReminderEnabled by viewModel.isReminderEnabled.observeAsState(false)
+    val nextReminderTime by viewModel.nextReminderTime.observeAsState("")
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("reReminder") },
+                title = { Text("reReminder", fontWeight = FontWeight.Bold) },
                 actions = {
                     IconButton(
                         onClick = {
@@ -110,7 +101,12 @@ fun MainScreen(viewModel: MainViewModel) {
                     ) {
                         Icon(Icons.Default.Settings, contentDescription = "Einstellungen")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { paddingValues ->
@@ -122,46 +118,43 @@ fun MainScreen(viewModel: MainViewModel) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "Erinnerungen",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                shape = MaterialTheme.shapes.large
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Erinnerungen aktiviert",
-                        style = MaterialTheme.typography.titleLarge
+                        text = "Erinnerungen",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    Switch(
-                        checked = isReminderEnabled,
-                        onCheckedChange = { enabled ->
-                            viewModel.setReminderEnabled(enabled)
-                            if (enabled) {
-                                viewModel.scheduleReminder(context)
-                            } else {
-                                viewModel.cancelReminder(context)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Status:", style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Switch(
+                            checked = isReminderEnabled,
+                            onCheckedChange = { enabled ->
+                                viewModel.setReminderEnabled(enabled)
+                                if (enabled) {
+                                    viewModel.scheduleReminder(context)
+                                } else {
+                                    viewModel.cancelReminder(context)
+                                }
+                            },
+                            thumbContent = {
+                                // Animated icon can be placed here
                             }
-                        }
-                    )
-
-                    if (isReminderEnabled && nextReminderTime.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Nächste Erinnerung: $nextReminderTime",
-                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
@@ -169,15 +162,30 @@ fun MainScreen(viewModel: MainViewModel) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            if (isReminderEnabled) {
-                Button(
-                    onClick = {
-                        viewModel.scheduleReminder(context)
-                        Toast.makeText(context, "Erinnerung neu geplant", Toast.LENGTH_SHORT).show()
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Erinnerung neu planen")
+            AnimatedVisibility(
+                visible = isReminderEnabled,
+                enter = fadeIn(animationSpec = spring()) + scaleIn(),
+                exit = fadeOut(animationSpec = spring()) + scaleOut()
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    if (nextReminderTime.isNotEmpty()) {
+                        Text(
+                            text = "Nächste Erinnerung um $nextReminderTime Uhr",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    Button(
+                        onClick = {
+                            viewModel.scheduleReminder(context)
+                            Toast.makeText(context, "Erinnerung neu geplant!", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Text("Jetzt neu planen")
+                    }
                 }
             }
         }
@@ -188,6 +196,6 @@ fun MainScreen(viewModel: MainViewModel) {
 @Composable
 fun DefaultPreview() {
     ReReminderTheme {
-        // Preview ohne ViewModel
+        // Preview can be built with a mock ViewModel
     }
 }

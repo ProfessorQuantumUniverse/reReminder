@@ -6,11 +6,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -26,7 +28,7 @@ import com.olaf.rereminder.ui.theme.ReReminderTheme
 class SettingsActivity : ComponentActivity() {
 
     private lateinit var viewModel: SettingsViewModel
-    
+
     private val ringtonePickerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -37,31 +39,26 @@ class SettingsActivity : ComponentActivity() {
                 @Suppress("DEPRECATION")
                 result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
             }
-            viewModel.setSelectedRingtone(uri)
+            uri?.let { viewModel.setSelectedRingtone(it) }
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         viewModel = ViewModelProvider(this)[SettingsViewModel::class.java]
-        
+
         setContent {
             ReReminderTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    SettingsScreen(
-                        viewModel = viewModel,
-                        onBackPressed = { finish() },
-                        onShowRingtonePicker = { showRingtonePicker() }
-                    )
-                }
+                SettingsScreen(
+                    viewModel = viewModel,
+                    onBackPressed = { finish() },
+                    onShowRingtonePicker = { showRingtonePicker() }
+                )
             }
         }
     }
-    
+
     private fun showRingtonePicker() {
         val intent = android.content.Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
             putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION)
@@ -93,12 +90,17 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Einstellungen") },
+                title = { Text("Einstellungen", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackPressed) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Zurück")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { paddingValues ->
@@ -106,143 +108,53 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = 16.dp),
         ) {
-            // Intervall Einstellungen
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Erinnerungsintervall",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    TextButton(
-                        onClick = { showIntervalDialog = true },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start
-                        ) {
-                            Text(text = intervalText)
-                        }
-                    }
-                }
+            SettingsGroup(title = "Allgemein") {
+                SettingsItem(
+                    title = "Erinnerungsintervall",
+                    subtitle = intervalText,
+                    onClick = { showIntervalDialog = true }
+                )
             }
 
-            // Audio Einstellungen
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Audio Einstellungen",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Ton aktiviert")
-                        Switch(
-                            checked = isSoundEnabled,
-                            onCheckedChange = { viewModel.setSoundEnabled(it) }
-                        )
-                    }
-
-                    TextButton(
-                        onClick = onShowRingtonePicker,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start
-                        ) {
-                            Text(
-                                text = selectedRingtone?.let { uri ->
-                                    RingtoneManager.getRingtone(context, uri)?.getTitle(context) ?: "Standard"
-                                } ?: "Standard"
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Vibration Einstellungen
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Vibration Einstellungen",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Vibration aktiviert")
-                        Switch(
-                            checked = isVibrationEnabled,
-                            onCheckedChange = { viewModel.setVibrationEnabled(it) }
-                        )
-                    }
-
-                    TextButton(
-                        onClick = { showVibrationDialog = true },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start
-                        ) {
-                            Text(
-                                text = when (selectedVibrationPattern) {
-                                    0 -> "Kurz"
-                                    1 -> "Standard"
-                                    2 -> "Lang"
-                                    3 -> "Pulsierend"
-                                    else -> "Standard"
-                                }
-                            )
-                        }
-                    }
-                }
+            SettingsGroup(title = "Benachrichtigungen") {
+                SwitchSettingItem(
+                    title = "Ton",
+                    checked = isSoundEnabled,
+                    onCheckedChange = { viewModel.setSoundEnabled(it) }
+                )
+                SettingsItem(
+                    title = "Klingelton",
+                    subtitle = selectedRingtone?.let { uri ->
+                        RingtoneManager.getRingtone(context, uri)?.getTitle(context) ?: "Standard"
+                    } ?: "Standard",
+                    onClick = onShowRingtonePicker,
+                    enabled = isSoundEnabled
+                )
+                Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                SwitchSettingItem(
+                    title = "Vibration",
+                    checked = isVibrationEnabled,
+                    onCheckedChange = { viewModel.setVibrationEnabled(it) }
+                )
+                SettingsItem(
+                    title = "Vibrationsmuster",
+                    subtitle = when (selectedVibrationPattern) {
+                        0 -> "Kurz"
+                        1 -> "Standard"
+                        2 -> "Lang"
+                        3 -> "Pulsierend"
+                        else -> "Standard"
+                    },
+                    onClick = { showVibrationDialog = true },
+                    enabled = isVibrationEnabled
+                )
             }
         }
     }
-    
-    // Interval Picker Dialog
+
     if (showIntervalDialog) {
         IntervalPickerDialogCompose(
             currentInterval = viewModel.getReminderInterval(),
@@ -254,38 +166,107 @@ fun SettingsScreen(
         )
     }
 
-    // Vibration Pattern Dialog
     if (showVibrationDialog) {
-        AlertDialog(
-            onDismissRequest = { showVibrationDialog = false },
-            title = { Text("Vibrationsmuster auswählen") },
-            text = {
-                Column {
-                    val patterns = listOf("Kurz", "Standard", "Lang", "Pulsierend")
-                    patterns.forEachIndexed { index, pattern ->
-                        TextButton(
-                            onClick = {
-                                viewModel.setVibrationPattern(index)
-                                showVibrationDialog = false
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Start
-                            ) {
-                                Text(pattern)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showVibrationDialog = false }) {
-                    Text("Abbrechen")
-                }
+        VibrationPatternDialog(
+            currentPattern = selectedVibrationPattern,
+            onDismiss = { showVibrationDialog = false },
+            onPatternSelected = {
+                viewModel.setVibrationPattern(it)
+                showVibrationDialog = false
             }
         )
     }
+}
+
+@Composable
+fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Column {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+        content()
+    }
+}
+
+@Composable
+fun SettingsItem(title: String, subtitle: String, onClick: () -> Unit, enabled: Boolean = true) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+            )
+        }
+        Icon(
+            Icons.Default.KeyboardArrowRight,
+            contentDescription = null,
+            tint = if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+        )
+    }
+}
+
+@Composable
+fun SwitchSettingItem(title: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(text = title, style = MaterialTheme.typography.bodyLarge)
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+
+@Composable
+fun VibrationPatternDialog(currentPattern: Int, onDismiss: () -> Unit, onPatternSelected: (Int) -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Vibrationsmuster") },
+        text = {
+            Column {
+                val patterns = listOf("Kurz", "Standard", "Lang", "Pulsierend")
+                patterns.forEachIndexed { index, pattern ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onPatternSelected(index) }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = currentPattern == index,
+                            onClick = { onPatternSelected(index) }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(pattern)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Schließen")
+            }
+        }
+    )
 }
