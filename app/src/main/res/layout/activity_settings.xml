@@ -1,0 +1,35 @@
+<layout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:tools="http://schemas.android.com/tools">
+    <data>
+        <variable name="viewModel" type="com.olaf.rereminder.ui.settings.SettingsViewModel"/>
+    </data>
+    <androidx.constraintlayout.widget.ConstraintLayout android:layout_width="match_parent" android:layout_height="match_parent" tools:context=".ui.settings.SettingsActivity">
+        <com.google.android.material.appbar.MaterialToolbar android:id="@+id/toolbar" android:layout_width="0dp" android:layout_height="?attr/actionBarSize" android:background="?attr/colorPrimary" android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent"/>
+        <ScrollView android:layout_width="0dp" android:layout_height="0dp" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toBottomOf="@+id/toolbar">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                <!--  Intervall Einstellungen  -->
+                <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp" app:cardCornerRadius="12dp" app:cardElevation="4dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Erinnerungsintervall" android:textAppearance="@style/TextAppearance.Material3.TitleMedium" android:textStyle="bold"/>
+                        <Button android:id="@+id/intervalButton" style="@style/Widget.Material3.Button.TextButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:gravity="start|center_vertical" android:paddingStart="0dp" android:textAlignment="viewStart" tools:text="1h 30m"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+                <!--  Audio Einstellungen  -->
+                <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp" app:cardCornerRadius="12dp" app:cardElevation="4dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Audio Einstellungen" android:textAppearance="@style/TextAppearance.Material3.TitleMedium" android:textStyle="bold"/>
+                        <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/soundSwitch" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Ton aktiviert"/>
+                        <Button android:id="@+id/ringtoneButton" style="@style/Widget.Material3.Button.TextButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:gravity="start|center_vertical" android:paddingStart="0dp" android:textAlignment="viewStart" tools:text="Standard Klingelton"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+                <!--  Vibration Einstellungen  -->
+                <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" app:cardCornerRadius="12dp" app:cardElevation="4dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Vibration Einstellungen" android:textAppearance="@style/TextAppearance.Material3.TitleMedium" android:textStyle="bold"/>
+                        <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/vibrationSwitch" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Vibration aktiviert"/>
+                        <Button android:id="@+id/vibrationPatternButton" style="@style/Widget.Material3.Button.TextButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:gravity="start|center_vertical" android:paddingStart="0dp" android:textAlignment="viewStart" tools:text="Standard"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+        </ScrollView>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>
