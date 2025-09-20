@@ -81,6 +81,14 @@ class PreferenceHelper(context: Context) {
         preferences.edit().putLong(KEY_NEXT_REMINDER_TIME, time).apply()
     }
 
+    // New: flag to show DKMA warning only once
+    fun isDontKillMyAppWarningShown(): Boolean =
+        preferences.getBoolean(KEY_DKMA_SHOWN, false)
+
+    fun setDontKillMyAppWarningShown(shown: Boolean = true) {
+        preferences.edit().putBoolean(KEY_DKMA_SHOWN, shown).apply()
+    }
+
     companion object {
         private const val PREF_NAME = "reminder_preferences"
         private const val KEY_REMINDER_ENABLED = "reminder_enabled"
@@ -93,6 +101,7 @@ class PreferenceHelper(context: Context) {
         private const val KEY_NOTIFICATION_TEXT = "notification_text"
         private const val KEY_NOTIFICATION_SOUND_TYPE = "notification_sound_type"
         private const val KEY_NEXT_REMINDER_TIME = "next_reminder_time"
+        private const val KEY_DKMA_SHOWN = "dontkillmyapp_shown"
         private const val DEFAULT_INTERVAL = 60 // 1 Stunde
 
         const val SOUND_TYPE_RINGTONE = "ringtone"

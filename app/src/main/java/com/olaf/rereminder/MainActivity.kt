@@ -3,6 +3,7 @@ package com.olaf.rereminder
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
@@ -36,6 +37,8 @@ import com.olaf.rereminder.ui.main.MainViewModel
 import com.olaf.rereminder.ui.settings.SettingsActivity
 import com.olaf.rereminder.ui.theme.ReReminderTheme
 import com.olaf.rereminder.ui.components.PermissionRequestScreen
+import com.olaf.rereminder.utils.DeviceUtils
+import com.olaf.rereminder.utils.PreferenceHelper
 
 class MainActivity : ComponentActivity() {
 
@@ -99,6 +102,19 @@ fun MainScreen(viewModel: MainViewModel) {
     val nextReminderTime by viewModel.nextReminderTime.observeAsState("")
     val intervalText by viewModel.intervalText.observeAsState("")
     var showIntervalDialog by remember { mutableStateOf(false) }
+
+    // DKMA notice state
+    val preferences = remember(context) { PreferenceHelper(context) }
+    var showDkmaDialog by remember { mutableStateOf(false) }
+    var dkmaUrl by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        val slug = DeviceUtils.getDontKillMyAppSlug()
+        if (slug != null && !preferences.isDontKillMyAppWarningShown()) {
+            dkmaUrl = "https://dontkillmyapp.com/$slug"
+            showDkmaDialog = true
+        }
+    }
 
 
     Scaffold(
@@ -208,6 +224,36 @@ fun MainScreen(viewModel: MainViewModel) {
             onIntervalSelected = { hours, minutes ->
                 viewModel.setReminderInterval(hours, minutes)
                 showIntervalDialog = false
+            }
+        )
+    }
+
+    // DKMA warning dialog
+    if (showDkmaDialog && dkmaUrl != null) {
+        AlertDialog(
+            onDismissRequest = { showDkmaDialog = false },
+            title = { Text("Wichtiger Hinweis") },
+            text = {
+                Text(
+                    "Dein Geräthersteller könnte Apps im Hintergrund aggressiv beenden. Bitte folge der Anleitung auf dontkillmyapp.com, damit Erinnerungen zuverlässig funktionieren.")
+            },
+            confirmButton = {
+                Button(onClick = {
+                    preferences.setDontKillMyAppWarningShown(true)
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(dkmaUrl))
+                    context.startActivity(intent)
+                    showDkmaDialog = false
+                }) {
+                    Text("Anleitung öffnen")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    preferences.setDontKillMyAppWarningShown(true)
+                    showDkmaDialog = false
+                }) {
+                    Text("Nicht mehr anzeigen")
+                }
             }
         )
     }

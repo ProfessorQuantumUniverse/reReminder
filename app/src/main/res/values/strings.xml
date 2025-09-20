@@ -3,4 +3,33 @@
     <string name="settings_title">Settings</string>
     <string name="reminder_notification_title">Reminder</string>
     <string name="reminder_notification_text">Your message</string>
+
+    <!-- General / labels -->
+    <string name="hours_label">Hours</string>
+    <string name="minutes_label">Minutes</string>
+    <string name="reminders_title">Reminders</string>
+    <string name="status_label">Status:</string>
+    <string name="settings_button_label">Settings</string>
+
+    <!-- Settings sections -->
+    <string name="reminder_interval_title">Reminder interval</string>
+    <string name="audio_settings_title">Audio settings</string>
+    <string name="sound_enabled_label">Sound enabled</string>
+    <string name="vibration_settings_title">Vibration settings</string>
+    <string name="vibration_enabled_label">Vibration enabled</string>
+    <string name="default_ringtone_label">Default ringtone</string>
+    <string name="default_label">Default</string>
+
+    <!-- Dynamic texts / formatting -->
+    <string name="next_reminder_at">Next reminder at %1$s</string>
+    <string name="next_reminder_sample">Next reminder: 15:30</string>
+
+    <!-- DKMA dialog -->
+    <string name="dkma_title">Important notice</string>
+    <string name="dkma_text">Your device manufacturer may aggressively stop apps running in the background. Please follow the instructions on dontkillmyapp.com to ensure reminders work reliably.</string>
+    <string name="dkma_open_guide">Open guide</string>
+    <string name="dkma_do_not_show_again">Don\'\t show again</string>
+
+    <!-- Permissions -->
+    <string name="permission_required_toast">Notification permission is required for the app to function properly.</string>
 </resources>
