@@ -1,0 +1,1 @@
+A simple, open-source app for setting recurring reminders throughout your day.
