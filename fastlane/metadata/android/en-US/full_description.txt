@@ -1,9 +1,11 @@
-reReminder helps you stay focused and mindful with simple, recurring notifications. Whether you need a nudge to correct your posture, take a break, or practice mindfulness, reReminder has you covered.
+<strong>reReminder</strong> helps you stay focused and mindful with simple, recurring notifications. Whether you need a nudge to correct your posture, take a break, or practice mindfulness, reReminder has you covered.<br><br>
 
-**Features:**
+<strong>Features:</strong><br>
 
-*   **Customizable Intervals:** Set reminders for any interval, from minutes to hours.
-*   **Flexible Notifications:** Choose between a standard notification sound or have the reminder text read aloud with Text-to-Speech.
-*   **Personalized Alerts:** Customize the notification title, text, and vibration pattern to fit your needs.
-*   **Simple Interface:** A clean, intuitive interface built with Jetpack Compose makes setting up reminders effortless.
-*   **Dark Mode:** The app respects your system's theme for comfortable use in any lighting.
+<ul>
+  <li><strong>Customizable Intervals:</strong> Set reminders for any interval, from minutes to hours.</li>
+  <li><strong>Flexible Notifications:</strong> Choose between a standard notification sound or have the reminder text read aloud with Text-to-Speech.</li>
+  <li><strong>Personalized Alerts:</strong> Customize the notification title, text, and vibration pattern to fit your needs.</li>
+  <li><strong>Simple Interface:</strong> A clean, intuitive interface built with Jetpack Compose makes setting up reminders effortless.</li>
+  <li><strong>Dark Mode:</strong> The app respects your system's theme for comfortable use in any lighting.</li>
+</ul>
