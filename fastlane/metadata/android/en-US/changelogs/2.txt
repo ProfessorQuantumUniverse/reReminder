@@ -1,7 +1,6 @@
 This is a major update with a complete rewrite of the app!
 
-- **Complete Redesign:** The entire user interface has been rebuilt from the ground up using modern Jetpack Compose for a fluid and intuitive experience.
-- **Enhanced Settings:** A brand-new settings screen gives you more control over your notifications, including custom text, sound vs. Text-to-Speech, and different vibration patterns.
-- **Improved Stability:** Alarms and notifications are now more reliable.
-- **Permission Handling:** The app now properly requests necessary permissions on modern Android versions.
-- **"Don't Kill My App" Integration:** Includes a helpful one-time warning for users on devices with aggressive background process management to ensure reminders are delivered reliably.
+-Complete Redesign: Now using Jetpack compose
+-Enhanced Settings: Introduced TTS, vibration and sound settings.
+-Improved Stability: Alarms and notifications are now more reliable.
+-"Don't Kill My App" Integration: Includes a helpful one-time warning for users on devices with aggressive background process management.
