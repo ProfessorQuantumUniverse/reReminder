@@ -30,8 +30,7 @@ Perfect for workouts, medication, hydration, productivity techniques (Pomodoro),
 </a>
 <br />
 <a href="https://github.com/ProfessorQuantumUniverse/reReminder/releases/latest">
-  <img src="[https://img.shields.io/badge/Download_APK_Directly-GitHub-gray](https://img.shields.io/badge/Download_on_Github-Github?style=plastic&logo=Github&logoSize=big&color=black
-)" height="80"/>
+  <img src="https://img.shields.io/badge/Download_on_Github-Github?style=plastic&logo=Github&logoSize=big&color=black" height="80"/>
 </a>
 <!-- DOWNLOAD BUTTONS END -->
 
