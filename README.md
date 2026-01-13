@@ -12,7 +12,6 @@ Perfect for workouts, medication, hydration, productivity techniques (Pomodoro),
 
 <!-- BADGES START -->
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/ProfessorQuantumUniverse/reReminder)](https://github.com/ProfessorQuantumUniverse/reReminder/releases)
-[![GitHub All Releases](https://img.shields.io/github/downloads/ProfessorQuantumUniverse/reReminder/total)](https://github.com/ProfessorQuantumUniverse/reReminder/releases)
 [![License](https://img.shields.io/github/license/ProfessorQuantumUniverse/reReminder)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android-3DDC84)](https://www.android.com/)
 [![Code Size](https://img.shields.io/github/languages/code-size/ProfessorQuantumUniverse/reReminder)](https://github.com/ProfessorQuantumUniverse/reReminder)
