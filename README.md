@@ -1,103 +1,115 @@
 <div align="center">
 
-<!-- LOGO PLACEHOLDER - Ersetze den Link unten mit deinem Logo-Link oder lösche die Zeile -->
-<img src="https://via.placeholder.com/150/2196F3/FFFFFF?text=reReminder" alt="reReminder Logo" width="120" height="120">
+<!-- LOGO SECTION (Replace logo.png with your actual icon path if you have one, or remove the line) -->
+<img src="https://f-droid.org/repo/com.olaf.rereminder/en-US/icon_aiOSb0fdfk1h7O19yluROnyuQXCTRj71hDcih8BUEig=.png" alt="reReminder Logo" width="120" height="120" />
 
 # reReminder
 
-**Dein ultimativer wiederkehrender Timer für Android.**
-<br>
-Einfach. Zuverlässig. Datenschutzfreundlich.
+**The Loop that keeps you in the Loop.**
+
+A powerful, open-source Android application for recurring reminders.  
+Perfect for workouts, medication, hydration, productivity techniques (Pomodoro), or simply keeping track of time.
 
 <!-- BADGES START -->
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/ProfessorQuantumUniverse/reReminder?color=2196F3&label=Latest%20Version&style=for-the-badge)](https://github.com/ProfessorQuantumUniverse/reReminder/releases/latest)
-[![GitHub wkf](https://img.shields.io/github/actions/workflow/status/ProfessorQuantumUniverse/reReminder/android.yml?label=Build&style=for-the-badge&logo=android)](https://github.com/ProfessorQuantumUniverse/reReminder/actions)
-[![License](https://img.shields.io/github/license/ProfessorQuantumUniverse/reReminder?color=orange&style=for-the-badge)](LICENSE)
-[![Repo Size](https://img.shields.io/github/repo-size/ProfessorQuantumUniverse/reReminder?color=green&style=for-the-badge)](https://github.com/ProfessorQuantumUniverse/reReminder)
-[![Downloads](https://img.shields.io/github/downloads/ProfessorQuantumUniverse/reReminder/total?color=red&style=for-the-badge&label=Downloads)](https://github.com/ProfessorQuantumUniverse/reReminder/releases)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/ProfessorQuantumUniverse/reReminder?style=for-the-badge&color=00C853)](https://github.com/ProfessorQuantumUniverse/reReminder/releases)
+[![GitHub All Releases](https://img.shields.io/github/downloads/ProfessorQuantumUniverse/reReminder/total?style=for-the-badge&color=2962FF)](https://github.com/ProfessorQuantumUniverse/reReminder/releases)
+[![License](https://img.shields.io/github/license/ProfessorQuantumUniverse/reReminder?style=for-the-badge&color=F4511E)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android)](https://www.android.com/)
+[![Code Size](https://img.shields.io/github/languages/code-size/ProfessorQuantumUniverse/reReminder?style=for-the-badge&color=purple)](https://github.com/ProfessorQuantumUniverse/reReminder)
 <!-- BADGES END -->
 
-<br>
+<br />
 
-<!-- DOWNLOAD BUTTONS -->
-<a href="https://play.google.com/store/apps/details?id=com.profquantum.rereminder">
-  <img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="80"/>
+<!-- DOWNLOAD BUTTONS START -->
+<a href='https://play.google.com/store/apps/details?id=com.olaf.rereminder'>
+  <img alt='Get it on Google Play' src='https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png' height="80"/>
 </a>
-<a href="https://f-droid.org/packages/com.profquantum.rereminder/">
-  <img alt="Get it on F-Droid" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="80"/>
+<a href='https://f-droid.org/de/packages/com.olaf.rereminder/'>
+  <img alt='Get it on F-Droid' src='https://fdroid.gitlab.io/artwork/badge/get-it-on.png' height="80"/>
 </a>
+<br />
+<a href="https://github.com/ProfessorQuantumUniverse/reReminder/releases/latest">
+  <img src="https://img.shields.io/badge/Download_APK_Directly-GitHub-gray?style=flat-square&logo=github&logoColor=white" height="30"/>
+</a>
+<!-- DOWNLOAD BUTTONS END -->
 
 </div>
 
 ---
 
-## 🚀 Über die App
+## 🚀 Overview
 
-**reReminder** ist eine leistungsstarke, aber leichtgewichtige Android-App, die dir hilft, den Überblick zu behalten. Egal, ob du alle 5 Minuten Wasser trinken, deine Haltung korrigieren oder einen Arbeitszyklus einhalten möchtest – reReminder erinnert dich zuverlässig.
+**reReminder** is designed for one simple purpose: **Reliability**. Whether you need a chime every 5 minutes to correct your posture, a vibration to sip water, or a voice telling you the time, reReminder handles it without draining your battery or invading your privacy.
 
-Im Gegensatz zu komplexen Wecker-Apps konzentriert sich reReminder auf genau eine Aufgabe: **Wiederkehrende Erinnerungen (Looping Reminders)**, und das mit maximaler Anpassbarkeit.
+It runs in the background, wakes up exactly when it needs to, and goes back to sleep. Simple.
 
-> *"Klingel alle 5 Minuten." - Und reReminder macht genau das.*
+## ✨ Key Features
 
----
+*   **⏱️ Precise Intervals:** Set reminders to repeat every X minutes or hours.
+*   **🗣️ Text-to-Speech (TTS):** Let the app *speak* your custom message or the current time so you don't have to look at your phone.
+*   **📳 Haptic Control:** Fully customizable vibration patterns.
+*   **🔔 Sound Selection:** Choose from system notification sounds or keep it silent.
+*   **🌙 Dark Mode:** Fully supported system-wide Dark Mode for night-time usage.
+*   **⏯️ Instant Control:** Easy Start/Stop functionality with immediate feedback.
+*   **🔋 Efficient:** Lightweight architecture ensuring minimal battery impact.
 
-## ✨ Features
+## 🛡️ Privacy & Philosophy
 
-Hier ist, was reReminder besonders macht:
+We believe your phone belongs to **you**.
 
-*   **⏱️ Flexibles Intervall:** Stelle jeden beliebigen Zeitraum ein (z.B. alle 2 Minuten, alle 4 Stunden).
-*   **🗣️ Text-to-Speech (TTS):** Lass dir deine Erinnerung vorlesen, statt nur einen Ton zu hören.
-*   **🔔 Anpassbare Töne:** Wähle deinen eigenen Benachrichtigungston.
-*   **📳 Vibration nach Maß:** Konfigurierbare Vibrationsmuster. An oder Aus – du entscheidest.
-*   **🌙 Dark Mode:** Schont deine Augen und den Akku. Modernes, schickes Design.
-*   **🛡️ 100% Privat:** Keine Werbung. Kein Tracking. Deine Daten bleiben auf deinem Gerät.
-*   **🪶 Leichtgewicht:** Verbraucht kaum Speicherplatz und schont die Ressourcen.
-*   **⚡ Zuverlässig:** Starten und Stoppen mit einem Klick. Funktioniert im Hintergrund.
-
----
+*   ✅ **100% Open Source**
+*   ✅ **No Ads**
+*   ✅ **No Tracking / Analytics**
+*   ✅ **No Unnecessary Permissions**
+*   ✅ **Offline First**
 
 ## 📸 Screenshots
 
 <div align="center">
-  <!-- Ersetze diese Links mit echten Screenshots aus deinem Repo (z.B. im Ordner /screenshots) -->
-  <img src="https://via.placeholder.com/200x400/121212/FFFFFF?text=Home+Dark" width="200" />
-  <img src="https://via.placeholder.com/200x400/FFFFFF/000000?text=Einstellungen" width="200" />
-  <img src="https://via.placeholder.com/200x400/121212/2196F3?text=Active+Timer" width="200" />
+  <!-- Replace specific paths with your actual screenshot paths -->
+  <table>
+    <tr>
+      <td align="center"><b>Light Mode</b></td>
+      <td align="center"><b>Dark Mode</b></td>
+      <td align="center"><b>Settings</b></td>
+    </tr>
+    <tr>
+      <td><img src="docs/screenshots/light.png" width="200" alt="Light Mode" /></td> <!-- ADD SCREENSHOTS TO A 'docs' FOLDER -->
+      <td><img src="docs/screenshots/dark.png" width="200" alt="Dark Mode" /></td>
+      <td><img src="docs/screenshots/settings.png" width="200" alt="Settings" /></td>
+    </tr>
+  </table>
 </div>
+
+## 🛠️ Installation
+
+### Option 1: Google Play Store
+[Google Play](https://play.google.com/store/apps/details?id=com.olaf.rereminder)
+
+### Option 2: F-Droid
+[F-Droid](https://f-droid.org/de/packages/com.olaf.rereminder/)
+
+### Option 3: Manual APK (GitHub)
+1. Go to the [Releases](https://github.com/ProfessorQuantumUniverse/reReminder/releases) page.
+2. Download the latest `.apk` file.
+3. Install it on your Android device (you may need to allow installation from unknown sources).
+
+## 🤝 Contributing
+
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
 
-## 📥 Download & Installation
-
-Du hast verschiedene Möglichkeiten, reReminder zu installieren:
-
-### 📱 Für Normalos (Empfohlen)
-
-1.  **Google Play Store:** [Bald verfügbar](#)
-2.  **F-Droid Store:** [Bald verfügbar](#)
-3.  **Direkter APK Download:** Lade dir die neueste `.apk` Datei direkt von GitHub herunter:
-    <br>
-    [**👉 Hier klicken für den neusten Download**](https://github.com/ProfessorQuantumUniverse/reReminder/releases/latest)
-
-### 💻 Für Entwickler (Build from Source)
-
-Klone das Repository und baue es mit Android Studio:
-
-```bash
-git clone https://github.com/ProfessorQuantumUniverse/reReminder.git
-cd reReminder
-./gradlew assembleDebug
-```
-🤝 Mitwirken (Contributing)
-Dies ist ein Open Source Projekt! Beiträge sind herzlich willkommen.
-Egal ob du einen Bug gefunden hast, eine neue Funktion vorschlagen möchtest oder den Code verbessern willst.
-Forke das Projekt.
-Erstelle einen Feature Branch (git checkout -b feature/AmazingFeature).
-Committe deine Änderungen (git commit -m 'Add some AmazingFeature').
-Pushe den Branch (git push origin feature/AmazingFeature).
-Öffne einen Pull Request.
-📄 Lizenz
-Dieses Projekt ist unter der MIT Lizenz veröffentlicht - siehe die LICENSE Datei für Details.
 <div align="center">
-<sub>Made with ❤️ by ProfessorQuantumUniverse</sub>
+Made with ❤️ for the Android Community
 </div>
