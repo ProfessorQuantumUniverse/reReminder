@@ -11,12 +11,12 @@ A powerful, open-source Android application for recurring reminders.
 Perfect for workouts, medication, hydration, productivity techniques (Pomodoro), or simply keeping track of time.
 
 <!-- BADGES START -->
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/ProfessorQuantumUniverse/reReminder)](https://github.com/ProfessorQuantumUniverse/reReminder/releases)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/ProfessorQuantumUniverse/reReminder&label=GitHub-release-latest-by-date)](https://github.com/ProfessorQuantumUniverse/reReminder/releases)
 [![License](https://img.shields.io/github/license/ProfessorQuantumUniverse/reReminder)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android-3DDC84)](https://www.android.com/)
 [![Code Size](https://img.shields.io/github/languages/code-size/ProfessorQuantumUniverse/reReminder)](https://github.com/ProfessorQuantumUniverse/reReminder)
 ![GitHub Downloads](https://img.shields.io/github/downloads/ProfessorQuantumUniverse/reReminder/total)
-![Downloads on F-Droid](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FProfessorQuantumUniverse%2Frereminder-stats%2Frefs%2Fheads%2Fmain%2Ffdroid-shield.json&query=%24.message&logo=f-droid)
+![Downloads on F-Droid](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FProfessorQuantumUniverse%2Frereminder-stats%2Frefs%2Fheads%2Fmain%2Ffdroid-shield.json&query=%24.message&logo=f-droid&label=Downloads%20on%20F-Droid)
 <!-- BADGES END -->
 
 <br />
