@@ -16,6 +16,7 @@ Perfect for workouts, medication, hydration, productivity techniques (Pomodoro),
 [![Platform](https://img.shields.io/badge/Platform-Android-3DDC84)](https://www.android.com/)
 [![Code Size](https://img.shields.io/github/languages/code-size/ProfessorQuantumUniverse/reReminder)](https://github.com/ProfessorQuantumUniverse/reReminder)
 ![GitHub Downloads](https://img.shields.io/github/downloads/ProfessorQuantumUniverse/reReminder/total)
+![Downloads last month](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgithub.com%2Fkitswas%2Ffdroid-metrics-dashboard%2Fraw%2Frefs%2Fheads%2Fmain%2Fprocessed%2Fmonthly%2Fio.github.kitswas.virtualgamepadmobile.json&query=%24.total_downloads&logo=fdroid&label=Downloads%20last%20month)
 <!-- BADGES END -->
 
 <br />
