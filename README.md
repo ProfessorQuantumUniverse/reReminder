@@ -98,8 +98,8 @@ We believe your phone belongs to **you**.
       <td align="center"><b>Settings</b></td>
     </tr>
     <tr>
-      <td><img src="docs/screenshots/light.png" width="200" alt="Reminder list" /></td> <!-- ADD SCREENSHOTS TO A 'docs' FOLDER -->
-      <td><img src="docs/screenshots/dark.png" width="200" alt="Reminder editor" /></td>
+      <td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="200" alt="Reminder list" /></td> <!-- ADD SCREENSHOTS TO A 'docs' FOLDER -->
+      <td><img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="200" alt="Reminder editor" /></td>
       <td><img src="docs/screenshots/settings.png" width="200" alt="Settings" /></td>
     </tr>
   </table>
