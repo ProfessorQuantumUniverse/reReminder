@@ -48,15 +48,34 @@ Perfect for workouts, medication, hydration, productivity techniques (Pomodoro),
 
 It runs in the background, wakes up exactly when it needs to, and goes back to sleep. Simple.
 
+Since **3.0** you are no longer limited to a single reminder: run as many independent loops as you like, each with its own interval, schedule and message.
+
 ## ✨ Key Features
 
-*   **⏱️ Precise Intervals:** Set reminders to repeat every X minutes or hours.
-*   **🗣️ Text-to-Speech (TTS):** Let the app *speak* your custom message or the current time so you don't have to look at your phone.
+### Multiple reminders
+*   **♾️ As many loops as you need:** "Take a walk" every 50 minutes and "Sit or stand" every 20 minutes run side by side, each counting down independently.
+*   **🎨 Colour coded:** Give every reminder its own accent so the list stays readable at a glance.
+*   **⏯️ Master switch:** Pause everything with one toggle — and see which reminder is up next and when — without losing each reminder's individual state.
+
+### Schedules
+*   **📅 Pick your days:** Run a reminder only Mon–Fri, only on weekends, or on any combination of weekdays.
+*   **🕘 Pick your hours:** Restrict a reminder to a time window like 08:00–17:00. Windows may cross midnight (22:00–06:00) for night shifts.
+*   **😌 Off by default:** A new reminder simply runs at any time. The schedule is one switch away when you want it, and invisible when you don't.
+
+### Notifications
+*   **✍️ Dynamic text:** Insert values that are filled in the moment the reminder fires — `{time}`, `{date}`, `{day}`, `{name}`, `{interval}` and `{next}` — with a live preview while you type.
+*   **🗣️ Text-to-Speech (TTS):** Let the app *speak* your message so you don't have to look at your phone. It follows your device language.
 *   **📳 Haptic Control:** Fully customizable vibration patterns.
-*   **🔔 Sound Selection:** Choose from system notification sounds or keep it silent.
-*   **🌙 Dark Mode:** Fully supported system-wide Dark Mode for night-time usage.
-*   **⏯️ Instant Control:** Easy Start/Stop functionality with immediate feedback.
-*   **🔋 Efficient:** Lightweight architecture ensuring minimal battery impact.
+*   **🔔 Sound Selection:** Choose from system notification sounds, or mute sound and vibration per reminder.
+
+### Built to actually fire
+*   **⏰ Exact alarms** that survive Doze, reboots, app updates, and clock or timezone changes.
+*   **🩺 Reliability check** in the settings: see at a glance whether exact alarms are permitted and whether battery optimisation is holding your reminders back — and jump straight to the right system screen to fix it.
+*   **🛟 Self-healing loop:** the next alarm is armed before the notification is even posted, so a single failure can never break the chain.
+
+### Look & feel
+*   **🎨 Material 3** with dynamic colour on Android 12+, edge-to-edge layout, and a full light/dark theme.
+*   **🌍 English and German**, with per-app language support on Android 13+.
 
 ## 🛡️ Privacy & Philosophy
 
@@ -66,7 +85,7 @@ We believe your phone belongs to **you**.
 *   ✅ **No Ads**
 *   ✅ **No Tracking / Analytics**
 *   ✅ **No Unnecessary Permissions**
-*   ✅ **Offline First**
+*   ✅ **Offline First** — everything is stored on your device, nothing ever leaves it.
 
 ## 📸 Screenshots
 
@@ -74,13 +93,13 @@ We believe your phone belongs to **you**.
   <!-- Replace specific paths with your actual screenshot paths -->
   <table>
     <tr>
-      <td align="center"><b>Light Mode</b></td>
-      <td align="center"><b>Dark Mode</b></td>
+      <td align="center"><b>Reminders</b></td>
+      <td align="center"><b>Editor</b></td>
       <td align="center"><b>Settings</b></td>
     </tr>
     <tr>
-      <td><img src="docs/screenshots/light.png" width="200" alt="Light Mode" /></td> <!-- ADD SCREENSHOTS TO A 'docs' FOLDER -->
-      <td><img src="docs/screenshots/dark.png" width="200" alt="Dark Mode" /></td>
+      <td><img src="docs/screenshots/light.png" width="200" alt="Reminder list" /></td> <!-- ADD SCREENSHOTS TO A 'docs' FOLDER -->
+      <td><img src="docs/screenshots/dark.png" width="200" alt="Reminder editor" /></td>
       <td><img src="docs/screenshots/settings.png" width="200" alt="Settings" /></td>
     </tr>
   </table>
@@ -99,6 +118,25 @@ We believe your phone belongs to **you**.
 2. Download the latest `.apk` file.
 3. Install it on your Android device (you may need to allow installation from unknown sources).
 
+## 🧑‍💻 Building from source
+
+```bash
+git clone https://github.com/ProfessorQuantumUniverse/reReminder.git
+cd reReminder
+./gradlew assembleDebug
+```
+
+| | |
+|---|---|
+| Language | Kotlin 2.4 |
+| UI | Jetpack Compose (Material 3) |
+| Build | Gradle 9.6 · Android Gradle Plugin 9.3 |
+| SDK | min 26 (Android 8) · target 37 |
+| JDK | 17 |
+| Storage | SharedPreferences + kotlinx.serialization — no database, no network |
+
+Reminders are scheduled with `AlarmManager`; there is no foreground service and no background polling.
+
 ## 🤝 Contributing
 
 Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
@@ -109,6 +147,8 @@ Contributions are what make the open-source community such an amazing place to l
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
+See [CHANGELOG.md](CHANGELOG.md) for the release history.
+
 ## 📄 License
 
 Distributed under the MIT License. See `LICENSE` for more information.
@@ -116,5 +156,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 ---
 
 <div align="center">
-Made with ❤️ for the Android Community
+🇪🇺 Made with passion in Europe — with ❤️ for the Android Community
 </div>

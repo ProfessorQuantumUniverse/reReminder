@@ -1,84 +1,89 @@
 package com.olaf.rereminder.ui.settings
 
 import android.app.Application
+import android.content.Context
 import android.net.Uri
+import android.os.PowerManager
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import com.olaf.rereminder.service.ReminderScheduler
 import com.olaf.rereminder.utils.PreferenceHelper
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+
+/** App-wide alert settings; per-timer options live in the timer editor. */
+data class SettingsUiState(
+    val ringtone: Uri? = null,
+    val soundEnabled: Boolean = true,
+    val soundType: String = PreferenceHelper.SOUND_TYPE_RINGTONE,
+    val vibrationEnabled: Boolean = true,
+    val vibrationPattern: Int = 1,
+    /** System-level conditions that decide whether reminders actually arrive on time. */
+    val exactAlarmsAllowed: Boolean = true,
+    val batteryUnrestricted: Boolean = true,
+)
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val preferenceHelper = PreferenceHelper(application)
+    private val preferences = PreferenceHelper(application)
 
-    private val _selectedRingtone = MutableLiveData<Uri?>()
-    val selectedRingtone: LiveData<Uri?> = _selectedRingtone
+    private val _uiState = MutableStateFlow(readSettings())
+    val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
-    private val _isSoundEnabled = MutableLiveData<Boolean>()
-    val isSoundEnabled: LiveData<Boolean> = _isSoundEnabled
+    private fun readSettings() = SettingsUiState(
+        ringtone = preferences.getSelectedRingtone(),
+        soundEnabled = preferences.isSoundEnabled(),
+        soundType = preferences.getNotificationSoundType(),
+        vibrationEnabled = preferences.isVibrationEnabled(),
+        vibrationPattern = preferences.getVibrationPattern(),
+        exactAlarmsAllowed = exactAlarmsAllowed(),
+        batteryUnrestricted = batteryUnrestricted(),
+    )
 
-    private val _isVibrationEnabled = MutableLiveData<Boolean>()
-    val isVibrationEnabled: LiveData<Boolean> = _isVibrationEnabled
-
-    private val _selectedVibrationPattern = MutableLiveData<Int>()
-    val selectedVibrationPattern: LiveData<Int> = _selectedVibrationPattern
-
-    private val _notificationTitle = MutableLiveData<String>()
-    val notificationTitle: LiveData<String> = _notificationTitle
-
-    private val _notificationText = MutableLiveData<String>()
-    val notificationText: LiveData<String> = _notificationText
-
-    private val _notificationSoundType = MutableLiveData<String>()
-    val notificationSoundType: LiveData<String> = _notificationSoundType
-
-    init {
-        loadSettings()
+    /** Both can be changed outside the app, so re-read them whenever the screen resumes. */
+    fun refreshSystemStatus() {
+        _uiState.update {
+            it.copy(
+                exactAlarmsAllowed = exactAlarmsAllowed(),
+                batteryUnrestricted = batteryUnrestricted(),
+            )
+        }
     }
 
-    private fun loadSettings() {
-        _selectedRingtone.value = preferenceHelper.getSelectedRingtone()
-        _isSoundEnabled.value = preferenceHelper.isSoundEnabled()
-        _isVibrationEnabled.value = preferenceHelper.isVibrationEnabled()
-        _selectedVibrationPattern.value = preferenceHelper.getVibrationPattern()
-        _notificationTitle.value = preferenceHelper.getNotificationTitle()
-        _notificationText.value = preferenceHelper.getNotificationText()
-        _notificationSoundType.value = preferenceHelper.getNotificationSoundType()
+    private fun exactAlarmsAllowed(): Boolean =
+        ReminderScheduler(getApplication()).canScheduleExactAlarms()
+
+    private fun batteryUnrestricted(): Boolean {
+        val context = getApplication<Application>()
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+        return powerManager?.isIgnoringBatteryOptimizations(context.packageName) ?: true
     }
 
-    fun getSelectedRingtone(): Uri? {
-        return _selectedRingtone.value ?: preferenceHelper.getSelectedRingtone()
-    }
+    fun getSelectedRingtone(): Uri? = _uiState.value.ringtone
 
     fun setSelectedRingtone(uri: Uri?) {
-        _selectedRingtone.value = uri
-        preferenceHelper.setSelectedRingtone(uri)
+        preferences.setSelectedRingtone(uri)
+        _uiState.update { it.copy(ringtone = uri) }
     }
 
     fun setSoundEnabled(enabled: Boolean) {
-        _isSoundEnabled.value = enabled
-        preferenceHelper.setSoundEnabled(enabled)
-    }
-
-    fun setVibrationEnabled(enabled: Boolean) {
-        _isVibrationEnabled.value = enabled
-        preferenceHelper.setVibrationEnabled(enabled)
-    }
-
-    fun setVibrationPattern(pattern: Int) {
-        _selectedVibrationPattern.value = pattern
-        preferenceHelper.setVibrationPattern(pattern)
-    }
-
-    fun setNotificationContent(title: String, text: String) {
-        _notificationTitle.value = title
-        _notificationText.value = text
-        preferenceHelper.setNotificationTitle(title)
-        preferenceHelper.setNotificationText(text)
+        preferences.setSoundEnabled(enabled)
+        _uiState.update { it.copy(soundEnabled = enabled) }
     }
 
     fun setNotificationSoundType(type: String) {
-        _notificationSoundType.value = type
-        preferenceHelper.setNotificationSoundType(type)
+        preferences.setNotificationSoundType(type)
+        _uiState.update { it.copy(soundType = type) }
+    }
+
+    fun setVibrationEnabled(enabled: Boolean) {
+        preferences.setVibrationEnabled(enabled)
+        _uiState.update { it.copy(vibrationEnabled = enabled) }
+    }
+
+    fun setVibrationPattern(pattern: Int) {
+        preferences.setVibrationPattern(pattern)
+        _uiState.update { it.copy(vibrationPattern = pattern) }
     }
 }

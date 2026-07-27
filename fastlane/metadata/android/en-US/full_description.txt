@@ -1,11 +1,30 @@
-<strong>reReminder</strong> helps you stay focused and mindful with simple, recurring notifications. Whether you need a nudge to correct your posture, take a break, or practice mindfulness, reReminder has you covered.<br><br>
+<strong>reReminder</strong> keeps you in the loop. Set up as many recurring reminders as you need — a nudge to correct your posture, a break every hour, water, medication, a Pomodoro timer, and let each one run on its own schedule.<br><br>
+
+<strong>Several reminders, side by side</strong><br>
+Run "Take a walk" every 50 minutes and "Sit or stand" every 20 minutes at the same time. Every reminder has its own interval, name, message and color, and counts down independently, changing one never disturbs the others. One master switch pauses everything and shows you which reminder is up next.<br><br>
+
+<strong>Reminders that fit your day</strong><br>
+Limit a reminder to certain weekdays and to a time window, for example Monday to Friday between 08:00 and 17:00. Windows may cross midnight for night shifts. Outside its window a reminder stays quiet and tells you when it starts again. Schedules are optional, a new reminder simply runs at any time.<br><br>
+
+<strong>Notification text that writes itself</strong><br>
+Drop values into your message, and they are filled at the moment the reminder fires: the current time, the date, the weekday, the reminder's name, its interval, or when the next one is due. A live preview shows the result while you type.<br><br>
+
+<strong>Made to actually fire</strong><br>
+reReminder uses exact alarms that survive Doze, reboots, app updates and timezone changes, and it arms the next alarm before it even shows the current one, so the loop cannot break. A reliability check in the settings tells you whether the system is holding your reminders back, and takes you straight to the setting that fixes it.<br><br>
 
 <strong>Features:</strong><br>
 
 <ul>
-  <li><strong>Customizable Intervals:</strong> Set reminders for any interval, from minutes to hours.</li>
-  <li><strong>Flexible Notifications:</strong> Choose between a standard notification sound or have the reminder text read aloud with Text-to-Speech.</li>
-  <li><strong>Personalized Alerts:</strong> Customize the notification title, text, and vibration pattern to fit your needs.</li>
-  <li><strong>Simple Interface:</strong> A clean, intuitive interface built with Jetpack Compose makes setting up reminders effortless.</li>
-  <li><strong>Dark Mode:</strong> The app respects your system's theme for comfortable use in any lighting.</li>
+  <li><strong>Unlimited reminders:</strong> each with its own interval, from one minute to many hours.</li>
+  <li><strong>Schedules:</strong> pick weekdays and a daily time window per reminder.</li>
+  <li><strong>Dynamic text:</strong> insert time, date, weekday, name, interval or next due time.</li>
+  <li><strong>Text-to-Speech:</strong> have your reminder read aloud, in your device language.</li>
+  <li><strong>Personalized alerts:</strong> choose a notification sound or vibration pattern, and mute either one per reminder.</li>
+  <li><strong>Master switch:</strong> pause everything at once without losing your setup.</li>
+  <li><strong>Material 3 design:</strong> dynamic colors on Android 12+, full dark mode.</li>
+  <li><strong>English and German</strong>, with per-app language support.</li>
 </ul>
+
+<strong>Private by design:</strong> no ads, no tracking, no accounts, no network access. Everything stays on your device. reReminder is free and open source.<br><br>
+
+🇪🇺 Made with passion in Europe.

@@ -4,8 +4,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import com.olaf.rereminder.AlarmScheduler
-import com.olaf.rereminder.R
+import com.olaf.rereminder.data.MessageTemplate
+import com.olaf.rereminder.data.ReminderRepository
+import com.olaf.rereminder.data.displayName
 import com.olaf.rereminder.utils.NotificationHelper
 import com.olaf.rereminder.utils.PreferenceHelper
 import com.olaf.rereminder.utils.SoundHelper
@@ -14,60 +15,78 @@ import com.olaf.rereminder.utils.VibrationHelper
 
 class AlarmReceiver : BroadcastReceiver() {
 
-    private val TAG = "AlarmReceiver"
-
     override fun onReceive(context: Context, intent: Intent) {
-        Log.d(TAG, "AlarmReceiver triggered")
+        val reminderId = intent.getIntExtra(ReminderScheduler.EXTRA_REMINDER_ID, -1)
+        if (reminderId < 0) {
+            Log.w(TAG, "Alarm without a reminder id, ignoring")
+            return
+        }
+
+        val repository = ReminderRepository.get(context)
+        val reminder = repository.get(reminderId)
+        if (reminder == null) {
+            Log.d(TAG, "Reminder $reminderId no longer exists")
+            return
+        }
+
+        // Re-arm FIRST. An alarm only exists once it has fired, so if anything below throws --
+        // a broken ringtone URI, a dead TTS engine, the process being killed mid-notification --
+        // the chain must already be secured or this reminder would silently stop forever.
+        val rescheduled = runCatching { ReminderScheduler(context).reschedule(reminderId) }
+            .onFailure { Log.e(TAG, "Could not re-arm reminder $reminderId", it) }
+            .isSuccess
+
+        if (!reminder.enabled) {
+            Log.d(TAG, "Reminder $reminderId is disabled")
+            return
+        }
+        if (!PreferenceHelper(context).isMasterEnabled()) {
+            Log.d(TAG, "All reminders are paused")
+            return
+        }
+
+        val now = System.currentTimeMillis()
+        // A window may have closed between scheduling and firing (e.g. the device slept through
+        // the end of the work day), so re-check before alerting.
+        if (!reminder.isActiveAt(now)) {
+            Log.d(TAG, "Reminder $reminderId fired outside its schedule, skipping the alert")
+            return
+        }
 
         try {
-            val preferenceHelper = PreferenceHelper(context)
+            val preferences = PreferenceHelper(context)
+            val message = MessageTemplate.render(context, reminder.message, reminder, now)
 
-            if (preferenceHelper.isReminderEnabled()) {
-                Log.d(TAG, "Reminder is enabled, showing notification and alerts")
+            NotificationHelper.createNotificationChannel(context)
+            NotificationHelper.showReminderNotification(context, reminder, message)
 
-                // Stelle sicher, dass der Notification Channel existiert
-                NotificationHelper.createNotificationChannel(context)
+            if (reminder.vibrationEnabled && preferences.isVibrationEnabled()) {
+                VibrationHelper.vibrate(context, preferences.getVibrationPattern())
+            }
 
-                // Benachrichtigung anzeigen
-                NotificationHelper.showReminderNotification(context)
-
-                // Vibration ausführen wenn aktiviert
-                if (preferenceHelper.isVibrationEnabled()) {
-                    Log.d(TAG, "Vibration enabled, triggering vibration")
-                    VibrationHelper.vibrate(context, preferenceHelper.getVibrationPattern())
-                } else {
-                    Log.d(TAG, "Vibration disabled")
-                }
-
-                // Sound abspielen oder Text vorlesen, wenn aktiviert
-                if (preferenceHelper.isSoundEnabled()) {
-                    when (preferenceHelper.getNotificationSoundType()) {
-                        PreferenceHelper.SOUND_TYPE_RINGTONE -> {
-                            Log.d(TAG, "Sound type is Ringtone, playing ringtone")
-                            SoundHelper.playRingtone(context, preferenceHelper.getSelectedRingtone())
-                        }
-                        PreferenceHelper.SOUND_TYPE_TTS -> {
-                            Log.d(TAG, "Sound type is TTS, speaking notification text")
-                            val title = preferenceHelper.getNotificationTitle().ifEmpty { context.getString(R.string.reminder_notification_title) }
-                            val text = preferenceHelper.getNotificationText().ifEmpty { context.getString(R.string.reminder_notification_text) }
-                            TextToSpeechHelper.initialize(context)
-                            TextToSpeechHelper.speak("$title. $text")
-                        }
+            if (reminder.soundEnabled && preferences.isSoundEnabled()) {
+                when (preferences.getNotificationSoundType()) {
+                    PreferenceHelper.SOUND_TYPE_TTS -> {
+                        val spokenName = reminder.displayName(context)
+                        TextToSpeechHelper.initialize(context)
+                        TextToSpeechHelper.speak("$spokenName. $message")
                     }
-                } else {
-                    Log.d(TAG, "Sound disabled")
+
+                    else -> SoundHelper.playRingtone(context, preferences.getSelectedRingtone())
                 }
-
-                // Nächsten Alarm planen
-                val alarmScheduler = AlarmScheduler(context)
-                alarmScheduler.scheduleRepeatingAlarm()
-
-                Log.d(TAG, "Next alarm scheduled")
-            } else {
-                Log.d(TAG, "Reminder is disabled")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error in AlarmReceiver", e)
+            Log.e(TAG, "Error alerting for reminder $reminderId", e)
         }
+
+        if (!rescheduled) {
+            // Last-ditch retry so a transient failure above doesn't end the loop.
+            runCatching { ReminderScheduler(context).reschedule(reminderId) }
+                .onFailure { Log.e(TAG, "Re-arm retry failed for reminder $reminderId", it) }
+        }
+    }
+
+    private companion object {
+        const val TAG = "AlarmReceiver"
     }
 }

@@ -1,1 +1,1 @@
-A simple, open-source app for setting recurring reminders throughout your day.
+Open-source recurring reminders, many timers, own schedules, no tracking.

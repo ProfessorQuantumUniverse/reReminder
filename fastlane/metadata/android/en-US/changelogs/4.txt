@@ -1,0 +1,16 @@
+reReminder 3.0 — one reminder is no longer enough.
+
+- Multiple reminders: run as many independent loops as you like, each with its own interval, name, message and color. They count down separately.
+- Schedules: limit a reminder to certain weekdays and to a time window like 08:00-17:00 (windows may cross midnight). Off by default, one switch away.
+- Dynamic notification text: insert {time}, {date}, {day}, {name}, {interval} or {next} and they are filled in when the reminder fires, with a live preview.
+- Master switch to pause everything at once, showing which reminder is up next.
+- Reliability check in the settings for exact alarms and battery optimization, linking straight to the right system screen.
+- Per-reminder sound and vibration toggles.
+- German translation and per-app language support.
+
+Fixes:
+- Reminders no longer stop forever if a single alert fails; the next alarm is armed first.
+- Reminders survive reboots again (the boot receiver was missing entirely).
+- Clock and timezone changes now reschedule every reminder.
+
+Your existing reminder is migrated automatically.

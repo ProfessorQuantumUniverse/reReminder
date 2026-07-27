@@ -1,0 +1,134 @@
+<resources>
+    <!-- Timer list -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_button_label">Einstellungen</string>
+    <string name="add_timer">Neue Erinnerung</string>
+    <string name="empty_title">Noch keine Erinnerungen</string>
+    <string name="empty_subtitle">Lege einen Timer an, um im Loop erinnert zu werden, alle 30 Minuten strecken, jede Stunde trinken, was auch immer dich in Bewegung hält.</string>
+    <string name="empty_action">Ersten Reminder anlegen</string>
+    <string name="master_all_reminders">Alle Erinnerungen</string>
+    <string name="master_paused">Alles pausiert</string>
+    <string name="master_nothing_running">Kein Reminder läuft</string>
+    <string name="master_next_in">Nächste: %1$s in %2$s</string>
+    <string name="master_next_at">Nächste: %1$s um %2$s</string>
+    <string name="reminder_default_name">Erinnerung</string>
+    <string name="next_in">in %1$s</string>
+    <string name="paused">Pausiert</string>
+    <string name="waiting_for_window">Startet %1$s</string>
+
+    <!-- Duration formatting -->
+    <string name="duration_hours_minutes">%1$d Std. %2$d Min.</string>
+    <string name="duration_hours">%1$d Std.</string>
+    <string name="duration_minutes">%1$d Min.</string>
+    <string name="every_interval">Alle %1$s</string>
+
+    <!-- Schedule summaries -->
+    <string name="schedule_every_day">Täglich</string>
+    <string name="schedule_weekdays">Mo–Fr</string>
+    <string name="schedule_weekends">Sa &amp; So</string>
+    <string name="schedule_all_day">ganztägig</string>
+    <string name="schedule_between">%1$s–%2$s</string>
+    <string name="schedule_summary">%1$s · %2$s</string>
+    <string name="schedule_never">Keine Tage ausgewählt</string>
+
+    <!-- Editor -->
+    <string name="editor_new_title">Neuer Reminder</string>
+    <string name="editor_edit_title">Reminder bearbeiten</string>
+    <string name="editor_section_schedule">Zeitplan</string>
+    <string name="editor_section_alerts">Signale</string>
+    <string name="editor_name_label">Name</string>
+    <string name="editor_name_placeholder">z. B. Spazieren gehen</string>
+    <string name="editor_message_label">Benachrichtigungstext</string>
+    <string name="editor_message_placeholder">z. B. Zeit, die Beine zu vertreten</string>
+    <string name="editor_message_hint">Tippe auf einen Chip, um einen Wert einzufügen, der beim Auslösen ersetzt wird.</string>
+    <string name="editor_preview">Vorschau: %1$s</string>
+    <string name="editor_repeat_every">Wiederholen alle</string>
+    <string name="editor_change_interval">Intervall ändern</string>
+    <string name="editor_insert_variable">Wert einfügen</string>
+    <string name="editor_schedule_always">Läuft zu jeder Zeit</string>
+    <string name="editor_all_day">Ganztägig</string>
+    <string name="editor_from">Von</string>
+    <string name="editor_until">Bis</string>
+    <string name="editor_colour_selected">Farbe %1$d ausgewählt</string>
+    <string name="editor_sound">Ton abspielen</string>
+    <string name="editor_vibration">Vibrieren</string>
+    <string name="editor_alert_hint">Ton- und Vibrationsart werden in den Einstellungen festgelegt und gelten für alle Timer.</string>
+    <string name="editor_delete">Timer löschen</string>
+    <string name="editor_delete_confirm_title">Diesen Timer löschen?</string>
+    <string name="editor_delete_confirm_text">„%1$s“ wird entfernt und erinnert dich nicht mehr.</string>
+    <string name="preset_weekdays">Mo–Fr</string>
+    <string name="preset_every_day">Täglich</string>
+    <string name="preset_weekend">Wochenende</string>
+
+    <!-- Message variables -->
+    <string name="variable_time">Uhrzeit</string>
+    <string name="variable_date">Datum</string>
+    <string name="variable_day">Wochentag</string>
+    <string name="variable_name">Reminder-Name</string>
+    <string name="variable_interval">Intervall</string>
+    <string name="variable_next">Nächste Erinnerung</string>
+
+    <!-- Interval picker -->
+    <string name="interval_dialog_title">Erinnerungsintervall festlegen</string>
+    <string name="hours_label">Stunden</string>
+    <string name="minutes_label">Minuten</string>
+    <string name="increase_value">%1$s erhöhen</string>
+    <string name="decrease_value">%1$s verringern</string>
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">Abbrechen</string>
+    <string name="action_close">Schließen</string>
+    <string name="action_save">Speichern</string>
+    <string name="action_delete">Löschen</string>
+    <string name="action_back">Zurück</string>
+
+    <!-- Notification content -->
+    <string name="reminder_notification_text">Deine Nachricht</string>
+    <string name="notification_channel_name">Erinnerungen</string>
+    <string name="notification_channel_description">Kanal für wiederkehrende Erinnerungsbenachrichtigungen</string>
+
+    <!-- Settings -->
+    <string name="settings_group_alerts">Signale</string>
+    <string name="sound_enabled_label">Ton aktiviert</string>
+    <string name="sound_mode_title">Ton oder Sprachausgabe</string>
+    <string name="sound_mode_dialog_title">Ton oder Sprachausgabe</string>
+    <string name="sound_mode_ringtone">Ton</string>
+    <string name="sound_mode_tts">Sprachausgabe</string>
+    <string name="ringtone_title">Klingelton</string>
+    <string name="ringtone_picker_title">Benachrichtigungston auswählen</string>
+    <string name="default_label">Standard</string>
+    <string name="settings_alerts_hint">Diese gelten für alle Reminder. Einzelne Reminder können Ton oder Vibration trotzdem stummschalten.</string>
+
+    <string name="vibration_enabled_label">Vibration</string>
+    <string name="vibration_pattern_title">Vibrationsmuster</string>
+    <string name="vibration_pattern_short">Kurz</string>
+    <string name="vibration_pattern_default">Standard</string>
+    <string name="vibration_pattern_long">Lang</string>
+    <string name="vibration_pattern_pulsating">Pulsierend</string>
+
+    <!-- Don\'t-kill-my-app notice -->
+    <string name="dkma_title">Wichtiger Hinweis</string>
+    <string name="dkma_text">Dein Gerätehersteller beendet Apps im Hintergrund möglicherweise aggressiv. Bitte folge der Anleitung auf dontkillmyapp.com, damit Erinnerungen zuverlässig ausgelöst werden.</string>
+    <string name="dkma_open_guide">Anleitung öffnen</string>
+    <string name="dkma_do_not_show_again">Nicht mehr anzeigen</string>
+
+    <string name="made_in_europe">Mit Leidenschaft in Europa gemacht</string>
+
+    <!-- Reliability -->
+    <string name="settings_group_reliability">Zuverlässigkeit</string>
+    <string name="reliability_hint">Erinnerungen nutzen exakte Alarme. Sind diese eingeschränkt, kann Android sie verzögern oder verwerfen.</string>
+    <string name="reliability_exact_alarms">Exakte Alarme</string>
+    <string name="reliability_exact_alarms_on">Erlaubt</string>
+    <string name="reliability_exact_alarms_off">Blockiert — zum Erlauben tippen</string>
+    <string name="reliability_battery">Akku-Optimierung</string>
+    <string name="reliability_battery_on">Nicht eingeschränkt</string>
+    <string name="reliability_battery_off">Eingeschränkt — zum Ändern tippen</string>
+    <string name="reliability_manufacturer">Hersteller-Einschränkungen</string>
+    <string name="reliability_manufacturer_summary">Anleitung auf dontkillmyapp.com öffnen</string>
+    <string name="reliability_screen_missing">Dein Gerät bietet diesen Bildschirm nicht an</string>
+
+    <!-- Permissions -->
+    <string name="permission_required_title">Benachrichtigungen erforderlich</string>
+    <string name="permission_required_text">Um dich im Loop zu erinnern, benötigt reReminder die Berechtigung, Benachrichtigungen zu senden. Bitte erteile sie, um fortzufahren.</string>
+    <string name="permission_grant">Berechtigung erteilen</string>
+    <string name="permission_required_toast">Für die korrekte Funktion der App wird die Benachrichtigungsberechtigung benötigt.</string>
+</resources>

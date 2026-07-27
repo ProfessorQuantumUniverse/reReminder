@@ -34,13 +34,7 @@ object VibrationHelper {
 
             val vibrationPattern = getVibrationPattern(pattern)
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val effect = VibrationEffect.createWaveform(vibrationPattern, -1)
-                vibrator.vibrate(effect)
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator.vibrate(vibrationPattern, -1)
-            }
+            vibrator.vibrate(VibrationEffect.createWaveform(vibrationPattern, -1))
         } catch (e: SecurityException) {
             android.util.Log.e("VibrationHelper", "Security exception during vibration", e)
         } catch (e: Exception) {
@@ -69,13 +63,9 @@ object VibrationHelper {
                 return
             }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val effect = VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE)
-                vibrator.vibrate(effect)
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator.vibrate(duration)
-            }
+            vibrator.vibrate(
+                VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE)
+            )
         } catch (e: SecurityException) {
             android.util.Log.e("VibrationHelper", "Security exception during vibration", e)
         } catch (e: Exception) {
