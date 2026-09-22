@@ -1,18 +1,26 @@
 package com.olaf.rereminder.ui.settings
 
+import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
-import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,7 +41,6 @@ import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,37 +50,53 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.olaf.rereminder.R
+import com.olaf.rereminder.ui.components.CollapsingHeader
 import com.olaf.rereminder.ui.components.MadeInEurope
+import com.olaf.rereminder.ui.components.SectionCard
+import com.olaf.rereminder.ui.components.SectionDivider
+import com.olaf.rereminder.ui.components.SectionItem
+import com.olaf.rereminder.ui.components.SectionSwitchRow
+import com.olaf.rereminder.ui.components.rememberCollapseProgress
+import com.olaf.rereminder.ui.theme.Motion
 import com.olaf.rereminder.ui.theme.ReReminderTheme
-import com.olaf.rereminder.utils.DeviceUtils
+import com.olaf.rereminder.ui.theme.tap
+import com.olaf.rereminder.ui.theme.tappable
 import com.olaf.rereminder.utils.PreferenceHelper
+import com.olaf.rereminder.utils.Reliability
 
-class SettingsActivity : ComponentActivity() {
+@Composable
+fun SettingsRoute(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel = viewModel(),
+) {
+    val context = LocalContext.current
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    // Read in composition so a locale change re-reads it, rather than inside the click lambda.
+    val ringtonePickerTitle = stringResource(R.string.ringtone_picker_title)
 
-    private val viewModel: SettingsViewModel by viewModels()
-
-    private val ringtonePickerLauncher = registerForActivityResult(
+    val ringtonePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == RESULT_OK) {
+        if (result.resultCode == Activity.RESULT_OK) {
             val uri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 result.data?.getParcelableExtra(
                     RingtoneManager.EXTRA_RINGTONE_PICKED_URI,
@@ -87,76 +110,56 @@ class SettingsActivity : ComponentActivity() {
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
-        super.onCreate(savedInstanceState)
+    // The user may have just changed exact-alarm or battery settings in the system UI.
+    LifecycleResumeEffect(viewModel) {
+        viewModel.refreshSystemStatus()
+        onPauseOrDispose { }
+    }
 
-        setContent {
-            ReReminderTheme {
-                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-                SettingsScreen(
-                    uiState = uiState,
-                    onBack = { finish() },
-                    onShowRingtonePicker = ::showRingtonePicker,
-                    onSoundEnabledChange = viewModel::setSoundEnabled,
-                    onSoundTypeChange = viewModel::setNotificationSoundType,
-                    onVibrationEnabledChange = viewModel::setVibrationEnabled,
-                    onVibrationPatternChange = viewModel::setVibrationPattern,
-                    onFixExactAlarms = ::openExactAlarmSettings,
-                    onFixBattery = ::openBatterySettings,
-                    onOpenDkma = ::openDontKillMyApp,
+    SettingsScreen(
+        uiState = uiState,
+        onBack = onBack,
+        onShowRingtonePicker = {
+            val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION)
+                putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, ringtonePickerTitle)
+                putExtra(
+                    RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
+                    viewModel.getSelectedRingtone(),
                 )
             }
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        // The user may have just changed these in system settings.
-        viewModel.refreshSystemStatus()
-    }
-
-    private fun openExactAlarmSettings() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
-        val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
-            .setData("package:$packageName".toUri())
-        startActivitySafely(intent)
-    }
-
-    private fun openBatterySettings() {
-        startActivitySafely(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-    }
-
-    private fun openDontKillMyApp() {
-        val slug = DeviceUtils.getDontKillMyAppSlug() ?: ""
-        startActivitySafely(Intent(Intent.ACTION_VIEW, "https://dontkillmyapp.com/$slug".toUri()))
-    }
-
-    private fun startActivitySafely(intent: Intent) {
-        runCatching { startActivity(intent) }
-            .onFailure {
-                // Not every OEM ships these screens.
-                Toast.makeText(this, R.string.reliability_screen_missing, Toast.LENGTH_SHORT).show()
-            }
-    }
-
-    private fun showRingtonePicker() {
-        val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
-            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION)
-            putExtra(
-                RingtoneManager.EXTRA_RINGTONE_TITLE,
-                getString(R.string.ringtone_picker_title),
+            ringtonePicker.launch(intent)
+        },
+        onSoundEnabledChange = viewModel::setSoundEnabled,
+        onSoundTypeChange = viewModel::setNotificationSoundType,
+        onVibrationEnabledChange = viewModel::setVibrationEnabled,
+        onVibrationPatternChange = viewModel::setVibrationPattern,
+        // Both land on this app's own switch rather than a list of every installed app.
+        onFixExactAlarms = { context.openFirstAvailable(Reliability.exactAlarmIntents(context)) },
+        onFixBattery = { context.openFirstAvailable(Reliability.batteryIntents(context)) },
+        onOpenDkma = {
+            context.startActivitySafely(
+                Intent(Intent.ACTION_VIEW, uiState.guideUrl.toUri())
             )
-            putExtra(
-                RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
-                viewModel.getSelectedRingtone(),
-            )
+        },
+    )
+}
+
+/** Not every OEM ships the system screens these intents point at. */
+private fun Context.startActivitySafely(intent: Intent) {
+    runCatching { startActivity(intent) }
+        .onFailure {
+            Toast.makeText(this, R.string.reliability_screen_missing, Toast.LENGTH_SHORT).show()
         }
-        ringtonePickerLauncher.launch(intent)
+}
+
+/** Walks the intent cascade, and says so when the device offers none of them. */
+private fun Context.openFirstAvailable(intents: List<Intent>) {
+    if (!Reliability.startFirstAvailable(this, intents)) {
+        Toast.makeText(this, R.string.reliability_screen_missing, Toast.LENGTH_SHORT).show()
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     uiState: SettingsUiState,
@@ -171,25 +174,28 @@ fun SettingsScreen(
     onOpenDkma: () -> Unit,
 ) {
     val context = LocalContext.current
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+    val view = LocalView.current
+    val scrollState = rememberScrollState()
+    val collapseProgress by rememberCollapseProgress(scrollState)
 
     var showVibrationDialog by rememberSaveable { mutableStateOf(false) }
     var showSoundTypeDialog by rememberSaveable { mutableStateOf(false) }
 
+
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.settings_title)) },
+            CollapsingHeader(
+                title = stringResource(R.string.settings_title),
+                progress = collapseProgress,
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { view.tap(); onBack() }) {
                         Icon(
                             Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = stringResource(R.string.action_back),
                         )
                     }
                 },
-                scrollBehavior = scrollBehavior,
             )
         },
     ) { innerPadding ->
@@ -197,18 +203,18 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            SettingsGroup(title = stringResource(R.string.settings_group_alerts)) {
-                SwitchSettingItem(
+            SectionCard(title = stringResource(R.string.settings_group_alerts)) {
+                SectionSwitchRow(
                     title = stringResource(R.string.sound_enabled_label),
                     checked = uiState.soundEnabled,
                     onCheckedChange = onSoundEnabledChange,
                 )
-                SettingsDivider()
-                SettingsItem(
+                SectionDivider()
+                SectionItem(
                     title = stringResource(R.string.sound_mode_title),
                     subtitle = stringResource(
                         if (uiState.soundType == PreferenceHelper.SOUND_TYPE_TTS) {
@@ -220,8 +226,14 @@ fun SettingsScreen(
                     onClick = { showSoundTypeDialog = true },
                     enabled = uiState.soundEnabled,
                 )
-                if (uiState.soundType == PreferenceHelper.SOUND_TYPE_RINGTONE) {
-                    SettingsItem(
+                // The ringtone row only makes sense while a ringtone is what actually plays, so
+                // it slides away rather than sitting there greyed out.
+                AnimatedVisibility(
+                    visible = uiState.soundType == PreferenceHelper.SOUND_TYPE_RINGTONE,
+                    enter = fadeIn() + expandVertically(Motion.spatial()),
+                    exit = fadeOut() + shrinkVertically(Motion.snappy()),
+                ) {
+                    SectionItem(
                         title = stringResource(R.string.ringtone_title),
                         subtitle = uiState.ringtone
                             ?.let { RingtoneManager.getRingtone(context, it)?.getTitle(context) }
@@ -230,13 +242,13 @@ fun SettingsScreen(
                         enabled = uiState.soundEnabled,
                     )
                 }
-                SettingsDivider()
-                SwitchSettingItem(
+                SectionDivider()
+                SectionSwitchRow(
                     title = stringResource(R.string.vibration_enabled_label),
                     checked = uiState.vibrationEnabled,
                     onCheckedChange = onVibrationEnabledChange,
                 )
-                SettingsItem(
+                SectionItem(
                     title = stringResource(R.string.vibration_pattern_title),
                     subtitle = stringResource(vibrationPatternLabel(uiState.vibrationPattern)),
                     onClick = { showVibrationDialog = true },
@@ -251,7 +263,7 @@ fun SettingsScreen(
                 modifier = Modifier.padding(horizontal = 8.dp),
             )
 
-            SettingsGroup(title = stringResource(R.string.settings_group_reliability)) {
+            SectionCard(title = stringResource(R.string.settings_group_reliability)) {
                 StatusItem(
                     title = stringResource(R.string.reliability_exact_alarms),
                     ok = uiState.exactAlarmsAllowed,
@@ -264,7 +276,7 @@ fun SettingsScreen(
                     ),
                     onClick = onFixExactAlarms,
                 )
-                SettingsDivider()
+                SectionDivider()
                 StatusItem(
                     title = stringResource(R.string.reliability_battery),
                     ok = uiState.batteryUnrestricted,
@@ -277,10 +289,19 @@ fun SettingsScreen(
                     ),
                     onClick = onFixBattery,
                 )
-                SettingsDivider()
-                SettingsItem(
+                SectionDivider()
+                SectionItem(
                     title = stringResource(R.string.reliability_manufacturer),
-                    subtitle = stringResource(R.string.reliability_manufacturer_summary),
+                    // Naming the vendor tells the user the link is about their phone, not a
+                    // generic disclaimer — and it is where the link actually goes.
+                    subtitle = if (uiState.vendorName.isBlank()) {
+                        stringResource(R.string.reliability_manufacturer_summary)
+                    } else {
+                        stringResource(
+                            R.string.reliability_manufacturer_summary_vendor,
+                            uiState.vendorName,
+                        )
+                    },
                     onClick = onOpenDkma,
                 )
             }
@@ -339,72 +360,6 @@ private val VibrationPatterns = listOf(
 private fun vibrationPatternLabel(pattern: Int): Int =
     VibrationPatterns.getOrElse(pattern) { R.string.vibration_pattern_default }
 
-@Composable
-private fun SettingsGroup(title: String, content: @Composable () -> Unit) {
-    Column {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 8.dp, bottom = 8.dp),
-        )
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.large,
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            ),
-        ) {
-            Column { content() }
-        }
-    }
-}
-
-@Composable
-private fun SettingsDivider() {
-    HorizontalDivider(
-        modifier = Modifier.padding(horizontal = 20.dp),
-        color = MaterialTheme.colorScheme.outlineVariant,
-    )
-}
-
-@Composable
-private fun SettingsItem(
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-    enabled: Boolean = true,
-) {
-    val contentAlpha = if (enabled) 1f else 0.38f
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = contentAlpha),
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = contentAlpha),
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        Icon(
-            Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = contentAlpha),
-        )
-    }
-}
-
 /** A settings row that also reports whether the system condition behind it is healthy. */
 @Composable
 private fun StatusItem(
@@ -413,59 +368,55 @@ private fun StatusItem(
     ok: Boolean,
     onClick: () -> Unit,
 ) {
+    val tint by animateColorAsState(
+        targetValue = if (ok) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.error
+        },
+        animationSpec = Motion.fade(),
+        label = "statusTint",
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .tappable(pressedScale = 0.99f, onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = if (ok) Icons.Rounded.CheckCircle else Icons.Rounded.ErrorOutline,
-            contentDescription = null,
-            tint = if (ok) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.error
+        // Fixing a restriction in system settings and coming back should visibly land.
+        AnimatedContent(
+            targetState = ok,
+            transitionSpec = {
+                (scaleIn(Motion.expressive(), initialScale = 0.4f) + fadeIn())
+                    .togetherWith(scaleOut(Motion.snappy(), targetScale = 0.4f) + fadeOut())
             },
-            modifier = Modifier.size(20.dp),
-        )
+            label = "statusIcon",
+        ) { healthy ->
+            Icon(
+                imageVector = if (healthy) Icons.Rounded.CheckCircle else Icons.Rounded.ErrorOutline,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(20.dp),
+            )
+        }
         Spacer(Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(text = title, style = MaterialTheme.typography.bodyLarge)
             Spacer(Modifier.height(2.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (ok) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.error
-                },
-            )
+            AnimatedContent(
+                targetState = subtitle,
+                transitionSpec = { fadeIn().togetherWith(fadeOut()) },
+                label = "statusSubtitle",
+            ) { text ->
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (ok) MaterialTheme.colorScheme.onSurfaceVariant else tint,
+                )
+            }
         }
-    }
-}
-
-@Composable
-private fun SwitchSettingItem(
-    title: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
-            .padding(start = 20.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f),
-        )
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
@@ -486,7 +437,7 @@ private fun SingleChoiceDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onSelected(index) }
+                            .tappable(pressedScale = 0.98f) { onSelected(index) }
                             .padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 
@@ -13,6 +14,9 @@ import java.time.ZoneId
  * A reminder fires every [intervalMinutes], but only inside its schedule: on the weekdays in
  * [days] and between [startMinute] and [endMinute] (minutes from local midnight). A window where
  * [startMinute] >= [endMinute] wraps past midnight, so 22:00–06:00 is a valid night schedule.
+ *
+ * [startAtMillis] pins the moment the loop begins. Until then the reminder stays silent, and its
+ * very first alert lands on that exact date and time rather than one interval from now.
  */
 @Serializable
 data class Reminder(
@@ -28,6 +32,8 @@ data class Reminder(
     val colorIndex: Int = 0,
     val soundEnabled: Boolean = true,
     val vibrationEnabled: Boolean = true,
+    /** Epoch millis of the first alert, 0 when the timer starts right away. */
+    val startAtMillis: Long = 0L,
     /** Epoch millis of the scheduled alarm, 0 when not scheduled. */
     val nextTriggerAt: Long = 0L,
 ) {
@@ -38,6 +44,10 @@ data class Reminder(
     val isEveryDay: Boolean
         get() = days.size == 7
 
+    /** True when the user pinned an explicit first-alert date and time. */
+    val hasStartMoment: Boolean
+        get() = startAtMillis > 0L
+
     /** A window that wraps past midnight, e.g. 22:00 → 06:00. */
     private val isOvernight: Boolean
         get() = !isAllDay && startMinute >= endMinute
@@ -45,9 +55,15 @@ data class Reminder(
     val intervalMillis: Long
         get() = intervalMinutes * 60_000L
 
+    /** True while the start moment is still ahead, so the loop has not begun yet. */
+    fun isPending(nowMillis: Long = System.currentTimeMillis()): Boolean =
+        hasStartMoment && startAtMillis > nowMillis
+
     /** Whether [epochMillis] falls inside an active slot of this reminder's schedule. */
     fun isActiveAt(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): Boolean {
         if (days.isEmpty()) return false
+        // Before the start moment nothing is active, however well the weekday window fits.
+        if (epochMillis < startAtMillis) return false
 
         val dateTime = Instant.ofEpochMilli(epochMillis).atZone(zone)
         val minuteOfDay = dateTime.hour * 60 + dateTime.minute
@@ -70,13 +86,43 @@ data class Reminder(
      * The next moment this reminder should fire after [fromMillis], or null when the schedule can
      * never match (no weekdays selected). Normally that is simply `from + interval`; if that lands
      * outside the schedule it snaps forward to the start of the next active window.
+     *
+     * While [startAtMillis] is still ahead the interval is ignored entirely — the first alert is
+     * the start moment itself, which is the whole point of pinning one.
      */
     fun nextTriggerAfter(fromMillis: Long, zone: ZoneId = ZoneId.systemDefault()): Long? {
         if (days.isEmpty() || intervalMinutes <= 0) return null
 
-        val candidate = fromMillis + intervalMillis
+        if (startAtMillis > fromMillis) {
+            return if (isActiveAt(startAtMillis, zone)) {
+                startAtMillis
+            } else {
+                // The chosen moment falls outside the weekday/time window — wait for the window.
+                nextWindowStartAfter(startAtMillis, zone)
+            }
+        }
+
+        val candidate = nextCandidateAfter(fromMillis)
         if (isActiveAt(candidate, zone)) return candidate
         return nextWindowStartAfter(candidate, zone)
+    }
+
+    /**
+     * The next tick of the loop after [fromMillis].
+     *
+     * With a pinned start the ticks sit on a fixed grid anchored to it, rather than being counted
+     * from whenever the last one happened to fire. That difference is what makes "every day at
+     * 09:00" hold: measured from the last firing, a reminder missed while the phone was off would
+     * resume at whatever time the phone came back, and the couple of milliseconds each alarm runs
+     * late would pile up over months. Without a start moment there is no anchor to snap to, so
+     * the interval is simply counted from now as before.
+     */
+    private fun nextCandidateAfter(fromMillis: Long): Long {
+        if (!hasStartMoment) return fromMillis + intervalMillis
+
+        val elapsed = fromMillis - startAtMillis
+        val ticks = elapsed / intervalMillis + 1
+        return startAtMillis + ticks * intervalMillis
     }
 
     /**
@@ -86,7 +132,13 @@ data class Reminder(
     fun nextWindowStartAfter(fromMillis: Long, zone: ZoneId = ZoneId.systemDefault()): Long? {
         if (days.isEmpty()) return null
 
-        val from = Instant.ofEpochMilli(fromMillis).atZone(zone)
+        // Never hand back a moment before the pinned start.
+        val earliest = maxOf(fromMillis, startAtMillis)
+        // A start moment can land in the middle of an open window — then the window is already
+        // open and the answer is that moment itself, not the next day's opening.
+        if (isActiveAt(earliest, zone)) return earliest
+
+        val from = Instant.ofEpochMilli(earliest).atZone(zone)
         var date: LocalDate = from.toLocalDate()
 
         // A window opens at most once per day, so eight days always covers a full week plus today.
@@ -94,7 +146,7 @@ data class Reminder(
             if (date.dayOfWeek.value in days) {
                 val startTime = if (isAllDay) LocalTime.MIDNIGHT else minuteToLocalTime(startMinute)
                 val start = date.atTime(startTime).atZone(zone).toInstant().toEpochMilli()
-                if (start >= fromMillis) return start
+                if (start >= earliest) return start
             }
             date = date.plusDays(1)
         }
@@ -114,5 +166,20 @@ data class Reminder(
             val clamped = minuteOfDay.coerceIn(0, MINUTES_PER_DAY - 1)
             return LocalTime.of(clamped / 60, clamped % 60)
         }
+
+        /** Builds an epoch-millis start moment from a local date and a minute of the day. */
+        fun startMomentOf(
+            date: LocalDate,
+            minuteOfDay: Int,
+            zone: ZoneId = ZoneId.systemDefault(),
+        ): Long = LocalDateTime.of(date, minuteToLocalTime(minuteOfDay))
+            .atZone(zone)
+            .toInstant()
+            .toEpochMilli()
+
+        fun localDateTimeOf(
+            epochMillis: Long,
+            zone: ZoneId = ZoneId.systemDefault(),
+        ): LocalDateTime = Instant.ofEpochMilli(epochMillis).atZone(zone).toLocalDateTime()
     }
 }

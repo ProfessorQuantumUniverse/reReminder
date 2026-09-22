@@ -1,17 +1,16 @@
 package com.olaf.rereminder.ui.editor
 
-import android.content.Context
-import android.content.Intent
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,25 +30,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -60,75 +56,75 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.olaf.rereminder.R
 import com.olaf.rereminder.data.MessageTemplate
 import com.olaf.rereminder.data.MessageVariable
 import com.olaf.rereminder.data.Reminder
+import com.olaf.rereminder.ui.components.CollapsingHeader
 import com.olaf.rereminder.ui.components.IntervalPickerDialogCompose
+import com.olaf.rereminder.ui.components.SectionCard
+import com.olaf.rereminder.ui.components.SectionDivider
+import com.olaf.rereminder.ui.components.SectionSwitchRow
+import com.olaf.rereminder.ui.components.SectionValueRow
+import com.olaf.rereminder.ui.components.StartMomentDialog
+import com.olaf.rereminder.ui.components.rememberCollapseProgress
 import com.olaf.rereminder.ui.format.dayInitial
 import com.olaf.rereminder.ui.format.formatMinuteOfDay
+import com.olaf.rereminder.ui.format.formatStartMoment
 import com.olaf.rereminder.ui.format.intervalLabel
 import com.olaf.rereminder.ui.format.scheduleSummary
+import com.olaf.rereminder.ui.theme.Motion
 import com.olaf.rereminder.ui.theme.ReReminderTheme
 import com.olaf.rereminder.ui.theme.ReminderAccents
 import com.olaf.rereminder.ui.theme.accentColor
+import com.olaf.rereminder.ui.theme.tap
+import com.olaf.rereminder.ui.theme.tappable
 import java.time.DayOfWeek
 
-class ReminderEditorActivity : ComponentActivity() {
+@Composable
+fun ReminderEditorRoute(
+    onClose: () -> Unit,
+    viewModel: ReminderEditorViewModel = viewModel(),
+) {
+    val draft by viewModel.draft.collectAsStateWithLifecycle()
 
-    private val viewModel: ReminderEditorViewModel by viewModels()
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
-        super.onCreate(savedInstanceState)
-
-        viewModel.initialize(intent.getIntExtra(EXTRA_REMINDER_ID, ReminderEditorViewModel.NEW_ID))
-
-        setContent {
-            ReReminderTheme {
-                val draft by viewModel.draft.collectAsStateWithLifecycle()
-                ReminderEditorScreen(
-                    draft = draft,
-                    isNew = viewModel.isNew,
-                    onChange = viewModel::update,
-                    onSave = {
-                        viewModel.save()
-                        finish()
-                    },
-                    onDelete = {
-                        viewModel.delete()
-                        finish()
-                    },
-                    onBack = { finish() },
-                )
-            }
-        }
-    }
-
-    companion object {
-        private const val EXTRA_REMINDER_ID = "reminder_id"
-
-        fun createIntent(context: Context): Intent =
-            Intent(context, ReminderEditorActivity::class.java)
-
-        fun editIntent(context: Context, id: Int): Intent =
-            Intent(context, ReminderEditorActivity::class.java)
-                .putExtra(EXTRA_REMINDER_ID, id)
-    }
+    ReminderEditorScreen(
+        draft = draft,
+        isNew = viewModel.isNew,
+        onChange = viewModel::update,
+        onSave = {
+            viewModel.save()
+            onClose()
+        },
+        onDelete = {
+            viewModel.delete()
+            onClose()
+        },
+        onBack = onClose,
+    )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * The reminder editor.
+ *
+ * Three blocks rather than seven: what the reminder says (name, colour, message), when it runs
+ * (interval, start, schedule) and how it announces itself (sound, vibration). Every option the
+ * old layout had is still here — the grouping just stopped competing with itself. It used to mix
+ * all-caps headers, full-bleed dividers and hand-drawn outlines in one scroll, which is three
+ * ways of saying "these belong together" fighting for the same job.
+ */
 @Composable
 fun ReminderEditorScreen(
     draft: Reminder,
@@ -139,6 +135,7 @@ fun ReminderEditorScreen(
     onBack: () -> Unit,
 ) {
     var showIntervalDialog by remember { mutableStateOf(false) }
+    var showStartDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var timeTarget by remember { mutableStateOf<TimeTarget?>(null) }
 
@@ -146,21 +143,27 @@ fun ReminderEditorScreen(
     val hasSchedule = !(draft.isEveryDay && draft.isAllDay)
     var scheduleOpen by rememberSaveable(draft.id) { mutableStateOf(hasSchedule) }
 
-    val accent = accentColor(draft.colorIndex)
+    val accent by animateColorAsState(
+        targetValue = accentColor(draft.colorIndex),
+        animationSpec = Motion.fade(),
+        label = "editorAccent",
+    )
     val canSave = draft.days.isNotEmpty() && draft.intervalMinutes > 0
 
+    val scrollState = rememberScrollState()
+    val collapseProgress by rememberCollapseProgress(scrollState)
+    val view = LocalView.current
+
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        stringResource(
-                            if (isNew) R.string.editor_new_title else R.string.editor_edit_title
-                        )
-                    )
-                },
+            CollapsingHeader(
+                title = stringResource(
+                    if (isNew) R.string.editor_new_title else R.string.editor_edit_title
+                ),
+                progress = collapseProgress,
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = { view.tap(); onBack() }) {
                         Icon(
                             Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = stringResource(R.string.action_back),
@@ -168,14 +171,25 @@ fun ReminderEditorScreen(
                     }
                 },
                 actions = {
-                    TextButton(onClick = onSave, enabled = canSave) {
-                        Icon(
-                            Icons.Rounded.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.action_save))
+                    // Save grows in only once the draft is actually saveable, which explains the
+                    // rule without needing a disabled-looking button the user can poke at.
+                    AnimatedVisibility(
+                        visible = canSave,
+                        enter = scaleIn(Motion.expressive(), initialScale = 0.6f) + fadeIn(),
+                        exit = scaleOut(Motion.snappy(), targetScale = 0.6f) + fadeOut(),
+                    ) {
+                        FilledTonalButton(
+                            onClick = { view.tap(); onSave() },
+                            modifier = Modifier.padding(end = 8.dp),
+                        ) {
+                            Icon(
+                                Icons.Rounded.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.action_save))
+                        }
                     }
                 },
             )
@@ -185,99 +199,81 @@ fun ReminderEditorScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(scrollState)
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                // Both of these are plain form fields on purpose: the outline says "editable"
-                // without the user having to work it out.
-                OutlinedTextField(
-                    value = draft.name,
-                    onValueChange = { name -> onChange { it.copy(name = name) } },
-                    label = { Text(stringResource(R.string.editor_name_label)) },
-                    placeholder = { Text(stringResource(R.string.editor_name_placeholder)) },
-                    textStyle = MaterialTheme.typography.titleLarge,
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            IdentityBlock(draft = draft, onChange = onChange)
 
-                IntervalField(
-                    intervalMinutes = draft.intervalMinutes,
-                    accent = accent,
+            SectionCard(title = stringResource(R.string.editor_section_timing)) {
+                SectionValueRow(
+                    title = stringResource(R.string.editor_repeat_every),
+                    value = intervalLabel(draft.intervalMinutes),
+                    // The interval is the point of the whole screen, so it keeps the accent.
+                    valueColor = accent,
                     onClick = { showIntervalDialog = true },
                 )
-
-                ColourPicker(
-                    selectedIndex = draft.colorIndex,
-                    onSelect = { index -> onChange { it.copy(colorIndex = index) } },
+                SectionDivider()
+                SectionValueRow(
+                    title = stringResource(R.string.editor_section_start),
+                    value = formatStartMoment(draft.startAtMillis),
+                    onClick = { showStartDialog = true },
                 )
-            }
-
-            GroupDivider()
-
-            Group(title = stringResource(R.string.editor_message_label)) {
-                MessageGroup(draft = draft, onChange = onChange)
-            }
-
-            GroupDivider()
-
-            ScheduleSection(
-                draft = draft,
-                accent = accent,
-                open = scheduleOpen,
-                onOpenChange = { open ->
-                    scheduleOpen = open
-                    onChange {
-                        if (open) {
-                            // Opening means "restrict it" — offer the common case straight away.
-                            it.copy(
-                                days = Reminder.WEEKDAYS,
-                                startMinute = 9 * 60,
-                                endMinute = 17 * 60,
-                            )
-                        } else {
-                            it.copy(
-                                days = Reminder.ALL_DAYS,
-                                startMinute = 0,
-                                endMinute = Reminder.MINUTES_PER_DAY,
-                            )
+                SectionDivider()
+                ScheduleSection(
+                    draft = draft,
+                    accent = accent,
+                    open = scheduleOpen,
+                    onOpenChange = { open ->
+                        scheduleOpen = open
+                        onChange {
+                            if (open) {
+                                // Opening means "restrict it" — offer the common case straight away.
+                                it.copy(
+                                    days = Reminder.WEEKDAYS,
+                                    startMinute = 9 * 60,
+                                    endMinute = 17 * 60,
+                                )
+                            } else {
+                                it.copy(
+                                    days = Reminder.ALL_DAYS,
+                                    startMinute = 0,
+                                    endMinute = Reminder.MINUTES_PER_DAY,
+                                )
+                            }
                         }
-                    }
-                },
-                onChange = onChange,
-                onPickTime = { timeTarget = it },
-            )
-
-            GroupDivider()
-
-            Group(title = stringResource(R.string.editor_section_alerts)) {
-                SwitchRow(
-                    title = stringResource(R.string.editor_sound),
-                    checked = draft.soundEnabled,
-                    onCheckedChange = { enabled -> onChange { it.copy(soundEnabled = enabled) } },
+                    },
+                    onChange = onChange,
+                    onPickTime = { timeTarget = it },
                 )
-                SwitchRow(
-                    title = stringResource(R.string.editor_vibration),
-                    checked = draft.vibrationEnabled,
-                    onCheckedChange = { enabled -> onChange { it.copy(vibrationEnabled = enabled) } },
-                )
+            }
+
+            Column {
+                SectionCard(title = stringResource(R.string.editor_section_alerts)) {
+                    SectionSwitchRow(
+                        title = stringResource(R.string.editor_sound),
+                        checked = draft.soundEnabled,
+                        onCheckedChange = { on -> onChange { it.copy(soundEnabled = on) } },
+                    )
+                    SectionDivider()
+                    SectionSwitchRow(
+                        title = stringResource(R.string.editor_vibration),
+                        checked = draft.vibrationEnabled,
+                        onCheckedChange = { on -> onChange { it.copy(vibrationEnabled = on) } },
+                    )
+                }
                 Text(
                     text = stringResource(R.string.editor_alert_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
+                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp),
                 )
             }
 
             if (!isNew) {
-                GroupDivider()
                 TextButton(
-                    onClick = { showDeleteDialog = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
+                    onClick = { view.tap(); showDeleteDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Icon(
                         Icons.Rounded.DeleteOutline,
@@ -293,7 +289,7 @@ fun ReminderEditorScreen(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
         }
     }
 
@@ -304,6 +300,17 @@ fun ReminderEditorScreen(
             onIntervalSelected = { hours, minutes ->
                 onChange { it.copy(intervalMinutes = hours * 60 + minutes) }
                 showIntervalDialog = false
+            },
+        )
+    }
+
+    if (showStartDialog) {
+        StartMomentDialog(
+            initialMillis = draft.startAtMillis,
+            onDismiss = { showStartDialog = false },
+            onConfirm = { millis ->
+                onChange { it.copy(startAtMillis = millis) }
+                showStartDialog = false
             },
         )
     }
@@ -346,118 +353,58 @@ fun ReminderEditorScreen(
 
 private enum class TimeTarget { START, END }
 
-// --- Interval -------------------------------------------------------------
+// --- What the reminder says ----------------------------------------------
 
 /**
- * Deliberately mirrors an [OutlinedTextField]: same outline, same floating label, plus an edit
- * icon. It reads as "a field you change", not as decoration.
+ * Name, colour and message, with no card around them.
+ *
+ * These are the only fields on the screen the user types into, so they keep the outline that says
+ * "editable" — and being the one uncarded block makes them read as the top of the page rather
+ * than as three more settings.
  */
 @Composable
-private fun IntervalField(intervalMinutes: Int, accent: Color, onClick: () -> Unit) {
-    Box(modifier = Modifier.fillMaxWidth()) {
-        Surface(
-            onClick = onClick,
-            shape = MaterialTheme.shapes.extraSmall,
-            color = Color.Transparent,
-            border = androidx.compose.foundation.BorderStroke(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outline,
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-        ) {
-            Row(
-                modifier = Modifier.padding(start = 16.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = intervalLabel(intervalMinutes),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = accent,
-                    modifier = Modifier.weight(1f),
-                )
-                Icon(
-                    Icons.Rounded.Edit,
-                    contentDescription = stringResource(R.string.editor_change_interval),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-        }
-
-        // Floating label, sitting on the border like a real text field's.
-        Surface(
-            color = MaterialTheme.colorScheme.background,
-            modifier = Modifier.padding(start = 12.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.editor_repeat_every),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 4.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun ColourPicker(selectedIndex: Int, onSelect: (Int) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        ReminderAccents.forEachIndexed { index, color ->
-            val selected = index == selectedIndex.mod(ReminderAccents.size)
-            Box(
-                modifier = Modifier
-                    .size(30.dp)
-                    .clip(CircleShape)
-                    .background(color)
-                    .border(
-                        width = if (selected) 3.dp else 0.dp,
-                        color = if (selected) {
-                            MaterialTheme.colorScheme.onSurface
-                        } else {
-                            Color.Transparent
-                        },
-                        shape = CircleShape,
-                    )
-                    .clickable { onSelect(index) },
-                contentAlignment = Alignment.Center,
-            ) {
-                if (selected) {
-                    Icon(
-                        Icons.Rounded.Check,
-                        contentDescription = stringResource(
-                            R.string.editor_colour_selected,
-                            index + 1,
-                        ),
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
-            }
-        }
-    }
-}
-
-// --- Message --------------------------------------------------------------
-
-@Composable
-private fun MessageGroup(draft: Reminder, onChange: ((Reminder) -> Reminder) -> Unit) {
+private fun IdentityBlock(draft: Reminder, onChange: ((Reminder) -> Reminder) -> Unit) {
     val context = LocalContext.current
     // Tracked as TextFieldValue so variable chips can insert at the caret.
-    var field by remember(draft.id) {
+    var message by remember(draft.id) {
         mutableStateOf(TextFieldValue(draft.message, TextRange(draft.message.length)))
     }
     var variablesOpen by rememberSaveable { mutableStateOf(false) }
 
-    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         OutlinedTextField(
-            value = field,
+            value = draft.name,
+            onValueChange = { name -> onChange { it.copy(name = name) } },
+            label = { Text(stringResource(R.string.editor_name_label)) },
+            placeholder = { Text(stringResource(R.string.editor_name_placeholder)) },
+            textStyle = MaterialTheme.typography.titleLarge,
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        // Unlabelled on purpose: six coloured dots with one ticked need no explaining, and a
+        // label here would pull weight away from the two fields it sits between.
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(start = 4.dp),
+        ) {
+            ReminderAccents.forEachIndexed { index, color ->
+                ColourDot(
+                    color = color,
+                    selected = index == draft.colorIndex.mod(ReminderAccents.size),
+                    index = index,
+                    onSelect = { onChange { it.copy(colorIndex = index) } },
+                )
+            }
+        }
+
+        OutlinedTextField(
+            value = message,
             onValueChange = { value ->
-                field = value
+                message = value
                 onChange { it.copy(message = value.text) }
             },
+            label = { Text(stringResource(R.string.editor_message_label)) },
             placeholder = { Text(stringResource(R.string.editor_message_placeholder)) },
             minLines = 2,
             modifier = Modifier.fillMaxWidth(),
@@ -470,7 +417,11 @@ private fun MessageGroup(draft: Reminder, onChange: ((Reminder) -> Reminder) -> 
             onToggle = { variablesOpen = !variablesOpen },
         )
 
-        AnimatedVisibility(visible = variablesOpen) {
+        AnimatedVisibility(
+            visible = variablesOpen,
+            enter = fadeIn() + expandVertically(Motion.spatial()),
+            exit = fadeOut() + shrinkVertically(Motion.snappy()),
+        ) {
             Column {
                 Text(
                     text = stringResource(R.string.editor_message_hint),
@@ -482,41 +433,91 @@ private fun MessageGroup(draft: Reminder, onChange: ((Reminder) -> Reminder) -> 
                     MessageVariable.entries.forEach { variable ->
                         AssistChip(
                             onClick = {
-                                field = field.insertAtCaret(variable.token)
-                                onChange { it.copy(message = field.text) }
+                                message = message.insertAtCaret(variable.token)
+                                onChange { it.copy(message = message.text) }
                             },
                             label = { Text(stringResource(variable.labelRes)) },
                         )
                     }
                 }
-                Spacer(Modifier.height(4.dp))
             }
         }
 
-        AnimatedVisibility(visible = draft.message.contains('{')) {
-            Column {
-                Spacer(Modifier.height(4.dp))
-                Surface(
-                    shape = MaterialTheme.shapes.small,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                ) {
-                    Text(
-                        text = stringResource(
-                            R.string.editor_preview,
-                            MessageTemplate.render(context, draft.message, draft),
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                    )
-                }
+        AnimatedVisibility(
+            visible = draft.message.contains('{'),
+            enter = fadeIn() + expandVertically(Motion.spatial()),
+            exit = fadeOut() + shrinkVertically(Motion.snappy()),
+        ) {
+            Surface(
+                shape = MaterialTheme.shapes.small,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            ) {
+                Text(
+                    text = stringResource(
+                        R.string.editor_preview,
+                        MessageTemplate.render(context, draft.message, draft),
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun ColourDot(color: Color, selected: Boolean, index: Int, onSelect: () -> Unit) {
+    // The chosen dot swells slightly and the ring draws itself in.
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.15f else 1f,
+        animationSpec = Motion.expressive(),
+        label = "colourScale",
+    )
+    val ringWidth by animateFloatAsState(
+        targetValue = if (selected) 3f else 0f,
+        animationSpec = Motion.spatial(),
+        label = "colourRing",
+    )
+
+    Box(
+        modifier = Modifier
+            .size(30.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(CircleShape)
+            .background(color)
+            .border(
+                width = ringWidth.dp,
+                color = MaterialTheme.colorScheme.onSurface,
+                shape = CircleShape,
+            )
+            .tappable(pressedScale = 0.82f, onClick = onSelect),
+        contentAlignment = Alignment.Center,
+    ) {
+        AnimatedVisibility(
+            visible = selected,
+            enter = scaleIn(Motion.expressive()) + fadeIn(),
+            exit = scaleOut(Motion.snappy()) + fadeOut(),
+        ) {
+            Icon(
+                Icons.Rounded.Check,
+                contentDescription = stringResource(R.string.editor_colour_selected, index + 1),
+                tint = Color.White,
+                modifier = Modifier.size(16.dp),
+            )
         }
     }
 }
 
 // --- Schedule -------------------------------------------------------------
 
+/**
+ * The weekday and time-window restriction: one switch row that grows its details underneath.
+ * Off is the common case, so the detail never occupies the screen unless it is in use.
+ */
 @Composable
 private fun ScheduleSection(
     draft: Reminder,
@@ -526,36 +527,26 @@ private fun ScheduleSection(
     onChange: ((Reminder) -> Reminder) -> Unit,
     onPickTime: (TimeTarget) -> Unit,
 ) {
-    Column(modifier = Modifier.padding(bottom = 8.dp)) {
-        // Collapsed by default: a timer with no schedule is the simple, common case.
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onOpenChange(!open) }
-                .padding(start = 20.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.editor_section_schedule),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = if (open) {
-                        scheduleSummary(draft)
-                    } else {
-                        stringResource(R.string.editor_schedule_always)
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Switch(checked = open, onCheckedChange = onOpenChange)
-        }
+    val view = LocalView.current
 
-        AnimatedVisibility(visible = open) {
-            Column {
+    Column {
+        SectionSwitchRow(
+            title = stringResource(R.string.editor_section_schedule),
+            subtitle = if (open) {
+                scheduleSummary(draft)
+            } else {
+                stringResource(R.string.editor_schedule_always)
+            },
+            checked = open,
+            onCheckedChange = onOpenChange,
+        )
+
+        AnimatedVisibility(
+            visible = open,
+            enter = fadeIn() + expandVertically(Motion.spatial()),
+            exit = fadeOut() + shrinkVertically(Motion.snappy()),
+        ) {
+            Column(modifier = Modifier.padding(bottom = 8.dp)) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -581,27 +572,25 @@ private fun ScheduleSection(
 
                 Spacer(Modifier.height(10.dp))
 
-                Row(
+                FlowRow(
                     modifier = Modifier.padding(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     AssistChip(
-                        onClick = { onChange { it.copy(days = Reminder.ALL_DAYS) } },
+                        onClick = { view.tap(); onChange { it.copy(days = Reminder.ALL_DAYS) } },
                         label = { Text(stringResource(R.string.preset_every_day)) },
                     )
                     AssistChip(
-                        onClick = { onChange { it.copy(days = Reminder.WEEKDAYS) } },
+                        onClick = { view.tap(); onChange { it.copy(days = Reminder.WEEKDAYS) } },
                         label = { Text(stringResource(R.string.preset_weekdays)) },
                     )
                     AssistChip(
-                        onClick = { onChange { it.copy(days = setOf(6, 7)) } },
+                        onClick = { view.tap(); onChange { it.copy(days = setOf(6, 7)) } },
                         label = { Text(stringResource(R.string.preset_weekend)) },
                     )
                 }
 
-                Spacer(Modifier.height(4.dp))
-
-                SwitchRow(
+                SectionSwitchRow(
                     title = stringResource(R.string.editor_all_day),
                     checked = draft.isAllDay,
                     onCheckedChange = { allDay ->
@@ -615,14 +604,18 @@ private fun ScheduleSection(
                     },
                 )
 
-                AnimatedVisibility(visible = !draft.isAllDay) {
+                AnimatedVisibility(
+                    visible = !draft.isAllDay,
+                    enter = fadeIn() + expandVertically(Motion.spatial()),
+                    exit = fadeOut() + shrinkVertically(Motion.snappy()),
+                ) {
                     Column {
-                        ValueRow(
+                        SectionValueRow(
                             title = stringResource(R.string.editor_from),
                             value = formatMinuteOfDay(draft.startMinute),
                             onClick = { onPickTime(TimeTarget.START) },
                         )
-                        ValueRow(
+                        SectionValueRow(
                             title = stringResource(R.string.editor_until),
                             value = formatMinuteOfDay(draft.endMinute),
                             onClick = { onPickTime(TimeTarget.END) },
@@ -637,31 +630,17 @@ private fun ScheduleSection(
 // --- Building blocks ------------------------------------------------------
 
 @Composable
-private fun Group(title: String, content: @Composable () -> Unit) {
-    Column(modifier = Modifier.padding(bottom = 8.dp)) {
-        Text(
-            text = title.uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 12.dp),
-        )
-        content()
-    }
-}
-
-@Composable
-private fun GroupDivider() {
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-}
-
-@Composable
 private fun ExpandableHeader(title: String, expanded: Boolean, onToggle: () -> Unit) {
-    val rotation by animateFloatAsState(if (expanded) 180f else 0f, label = "chevron")
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = Motion.spatial(),
+        label = "chevron",
+    )
     Row(
         modifier = Modifier
             .clip(MaterialTheme.shapes.small)
-            .clickable(onClick = onToggle)
-            .padding(vertical = 10.dp, horizontal = 4.dp),
+            .tappable(pressedScale = 0.94f, onClick = onToggle)
+            .padding(vertical = 6.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -676,49 +655,8 @@ private fun ExpandableHeader(title: String, expanded: Boolean, onToggle: () -> U
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier
                 .size(18.dp)
-                .rotate(rotation),
+                .graphicsLayer { rotationZ = rotation },
         )
-    }
-}
-
-@Composable
-private fun ValueRow(title: String, value: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.primary,
-        )
-    }
-}
-
-@Composable
-private fun SwitchRow(title: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
-            .padding(start = 20.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f),
-        )
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
@@ -730,21 +668,40 @@ private fun DayToggle(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    val background by animateColorAsState(
+        targetValue = if (selected) accent else MaterialTheme.colorScheme.surfaceContainerHighest,
+        animationSpec = Motion.fade(),
+        label = "dayBackground",
+    )
+    val textColor by animateColorAsState(
+        targetValue = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = Motion.fade(),
+        label = "dayText",
+    )
+    // Selecting a day pops it, which makes tapping across the row feel like playing keys.
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.06f else 1f,
+        animationSpec = Motion.expressive(),
+        label = "dayScale",
+    )
+
     Box(
         modifier = modifier
             .height(42.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .clip(CircleShape)
-            .background(
-                if (selected) accent else MaterialTheme.colorScheme.surfaceContainerHighest
-            )
-            .clickable(onClick = onClick),
+            .background(background)
+            .tappable(pressedScale = 0.88f, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
             textAlign = TextAlign.Center,
-            color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = textColor,
         )
     }
 }

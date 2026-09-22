@@ -11,15 +11,19 @@
     <string name="master_nothing_running">Kein Reminder läuft</string>
     <string name="master_next_in">Nächste: %1$s in %2$s</string>
     <string name="master_next_at">Nächste: %1$s um %2$s</string>
+    <string name="master_next_on">Nächste: %1$s startet %2$s</string>
     <string name="reminder_default_name">Erinnerung</string>
     <string name="next_in">in %1$s</string>
     <string name="paused">Pausiert</string>
     <string name="waiting_for_window">Startet %1$s</string>
+    <string name="not_started_yet">Noch nicht gestartet</string>
+    <string name="starts_on">Startet %1$s · in %2$s</string>
 
     <!-- Duration formatting -->
     <string name="duration_hours_minutes">%1$d Std. %2$d Min.</string>
     <string name="duration_hours">%1$d Std.</string>
     <string name="duration_minutes">%1$d Min.</string>
+    <string name="duration_days_hours">%1$d T. %2$d Std.</string>
     <string name="every_interval">Alle %1$s</string>
 
     <!-- Schedule summaries -->
@@ -34,6 +38,8 @@
     <!-- Editor -->
     <string name="editor_new_title">Neuer Reminder</string>
     <string name="editor_edit_title">Reminder bearbeiten</string>
+    <string name="editor_section_timing">Zeitlich</string>
+    <string name="editor_section_start">Start</string>
     <string name="editor_section_schedule">Zeitplan</string>
     <string name="editor_section_alerts">Signale</string>
     <string name="editor_name_label">Name</string>
@@ -43,7 +49,6 @@
     <string name="editor_message_hint">Tippe auf einen Chip, um einen Wert einzufügen, der beim Auslösen ersetzt wird.</string>
     <string name="editor_preview">Vorschau: %1$s</string>
     <string name="editor_repeat_every">Wiederholen alle</string>
-    <string name="editor_change_interval">Intervall ändern</string>
     <string name="editor_insert_variable">Wert einfügen</string>
     <string name="editor_schedule_always">Läuft zu jeder Zeit</string>
     <string name="editor_all_day">Ganztägig</string>
@@ -70,10 +75,19 @@
 
     <!-- Interval picker -->
     <string name="interval_dialog_title">Erinnerungsintervall festlegen</string>
+    <string name="interval_dialog_hint">Ein Rad wischen oder unten eine Vorgabe antippen.</string>
+
+    <!-- Startdatum und -zeit -->
+    <string name="start_dialog_title">Erste Erinnerung</string>
+    <string name="start_immediately">Sofort</string>
+    <string name="start_right_away">Sofort</string>
+    <string name="start_today">Heute</string>
+    <string name="start_tomorrow">Morgen</string>
+    <string name="start_next_monday">Nächster Montag</string>
+    <string name="start_pick_time">Uhrzeit wählen</string>
+    <string name="start_pick_date">Datum ändern</string>
     <string name="hours_label">Stunden</string>
     <string name="minutes_label">Minuten</string>
-    <string name="increase_value">%1$s erhöhen</string>
-    <string name="decrease_value">%1$s verringern</string>
     <string name="action_ok">OK</string>
     <string name="action_cancel">Abbrechen</string>
     <string name="action_close">Schließen</string>
@@ -106,10 +120,40 @@
     <string name="vibration_pattern_pulsating">Pulsierend</string>
 
     <!-- Don\'t-kill-my-app notice -->
-    <string name="dkma_title">Wichtiger Hinweis</string>
-    <string name="dkma_text">Dein Gerätehersteller beendet Apps im Hintergrund möglicherweise aggressiv. Bitte folge der Anleitung auf dontkillmyapp.com, damit Erinnerungen zuverlässig ausgelöst werden.</string>
-    <string name="dkma_open_guide">Anleitung öffnen</string>
     <string name="dkma_do_not_show_again">Nicht mehr anzeigen</string>
+
+    <!-- Geführte Ersteinrichtung -->
+    <string name="setup_title">Damit Erinnerungen ankommen</string>
+    <string name="setup_subtitle">Android stoppt Hintergrund-Apps standardmäßig. Ein paar schnelle Schalter, und deine Erinnerungen kommen pünktlich.</string>
+    <string name="setup_continue">Weiter</string>
+    <string name="setup_finish">reReminder starten</string>
+    <string name="setup_skip_hint">Den Rest kannst du später unter Einstellungen &gt; Zuverlässigkeit erledigen.</string>
+    <string name="setup_step_done">Erledigt</string>
+    <string name="setup_step_optional">Optional, aber ohne kommen Erinnerungen womöglich zu spät.</string>
+    <string name="setup_notifications_title">Benachrichtigungen zeigen</string>
+    <string name="setup_notifications_body">Eine Erinnerung ist eine Benachrichtigung, ohne diese Freigabe kann die App dich nicht erreichen.</string>
+    <string name="setup_notifications_action">Benachrichtigungen erlauben</string>
+    <string name="setup_alarms_title">Punktgenau klingeln</string>
+    <string name="setup_alarms_body">Öffnet direkt den Alarm-Schalter dieser App. Ohne ihn darf Android Erinnerungen sammeln und verspätet zustellen.</string>
+    <string name="setup_alarms_action">Alarm-Einstellung öffnen</string>
+    <string name="setup_battery_title">Im Hintergrund weiterlaufen</string>
+    <string name="setup_battery_body">Bittet Android, die App nicht schlafen zu legen. Das ist ein einzelner Zulassen-Dialog, keine Liste zum Durchsuchen.</string>
+    <string name="setup_battery_action">Hintergrundlauf erlauben</string>
+    <string name="setup_vendor_title">Noch eins, für dein Handy</string>
+    <string name="setup_vendor_body">Dein Hersteller legt eigene Hintergrund-Limits über die von Android. Die Anleitung zeigt genau, wo sie stecken.</string>
+    <string name="setup_vendor_body_named">%1$s legt eigene Hintergrund-Limits über die von Android. Die Anleitung zeigt mit Screenshots genau, wo sie auf deinem Handy stecken.</string>
+    <string name="setup_vendor_action">Anleitung öffnen</string>
+
+    <!-- Zuverlässigkeits-Hinweis -->
+    <string name="reliability_prompt_title">Erinnerungen könnten verzögert werden</string>
+    <string name="reliability_prompt_intro">Android kann reReminder im Hintergrund stoppen. Auf diesem Gerät:</string>
+    <string name="reliability_issue_exact_alarms">Exakte Alarme sind blockiert, Erinnerungen können sich verschieben oder ausfallen.</string>
+    <string name="reliability_issue_battery">Die Akku-Optimierung schränkt die App ein.</string>
+    <string name="reliability_issue_vendor">%1$s-Geräte stoppen Hintergrund-Apps aggressiver, als Android es vorsieht.</string>
+    <string name="reliability_issue_vendor_generic">Dieses Gerät stoppt Hintergrund-Apps möglicherweise aggressiver, als Android es vorsieht.</string>
+    <string name="reliability_prompt_open_settings">In den reReminder-Einstellungen beheben</string>
+    <string name="reliability_prompt_open_guide">Anleitung öffnen</string>
+    <string name="reliability_manufacturer_summary_vendor">%1$s-Anleitung auf dontkillmyapp.com öffnen</string>
 
     <string name="made_in_europe">Mit Leidenschaft in Europa gemacht</string>
 
@@ -127,8 +171,5 @@
     <string name="reliability_screen_missing">Dein Gerät bietet diesen Bildschirm nicht an</string>
 
     <!-- Permissions -->
-    <string name="permission_required_title">Benachrichtigungen erforderlich</string>
-    <string name="permission_required_text">Um dich im Loop zu erinnern, benötigt reReminder die Berechtigung, Benachrichtigungen zu senden. Bitte erteile sie, um fortzufahren.</string>
-    <string name="permission_grant">Berechtigung erteilen</string>
     <string name="permission_required_toast">Für die korrekte Funktion der App wird die Benachrichtigungsberechtigung benötigt.</string>
 </resources>

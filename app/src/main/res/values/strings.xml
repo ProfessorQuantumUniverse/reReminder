@@ -13,15 +13,19 @@
     <string name="master_nothing_running">No reminder is running</string>
     <string name="master_next_in">Next: %1$s in %2$s</string>
     <string name="master_next_at">Next: %1$s at %2$s</string>
+    <string name="master_next_on">Next: %1$s starts %2$s</string>
     <string name="reminder_default_name">Reminder</string>
     <string name="next_in">in %1$s</string>
     <string name="paused">Paused</string>
     <string name="waiting_for_window">Starts %1$s</string>
+    <string name="not_started_yet">Not started</string>
+    <string name="starts_on">Starts %1$s · in %2$s</string>
 
     <!-- Duration formatting -->
     <string name="duration_hours_minutes">%1$d h %2$d min</string>
     <string name="duration_hours">%1$d h</string>
     <string name="duration_minutes">%1$d min</string>
+    <string name="duration_days_hours">%1$d d %2$d h</string>
     <string name="every_interval">Every %1$s</string>
 
     <!-- Schedule summaries -->
@@ -36,6 +40,8 @@
     <!-- Editor -->
     <string name="editor_new_title">New reminder</string>
     <string name="editor_edit_title">Edit reminder</string>
+    <string name="editor_section_timing">Timing</string>
+    <string name="editor_section_start">Starts</string>
     <string name="editor_section_schedule">Schedule</string>
     <string name="editor_section_alerts">Alerts</string>
     <string name="editor_name_label">Name</string>
@@ -45,7 +51,6 @@
     <string name="editor_message_hint">Tap a chip to insert a value that is filled in when the reminder fires.</string>
     <string name="editor_preview">Preview: %1$s</string>
     <string name="editor_repeat_every">Repeat every</string>
-    <string name="editor_change_interval">Change interval</string>
     <string name="editor_insert_variable">Insert a value</string>
     <string name="editor_schedule_always">Runs at any time</string>
     <string name="editor_all_day">All day</string>
@@ -72,10 +77,19 @@
 
     <!-- Interval picker -->
     <string name="interval_dialog_title">Set reminder interval</string>
+    <string name="interval_dialog_hint">Flick a wheel, or tap a preset below.</string>
+
+    <!-- Start date and time -->
+    <string name="start_dialog_title">First reminder</string>
+    <string name="start_immediately">Right away</string>
+    <string name="start_right_away">Right away</string>
+    <string name="start_today">Today</string>
+    <string name="start_tomorrow">Tomorrow</string>
+    <string name="start_next_monday">Next Monday</string>
+    <string name="start_pick_time">Pick a time</string>
+    <string name="start_pick_date">Change date</string>
     <string name="hours_label">Hours</string>
     <string name="minutes_label">Minutes</string>
-    <string name="increase_value">Increase %1$s</string>
-    <string name="decrease_value">Decrease %1$s</string>
     <string name="action_ok">OK</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_close">Close</string>
@@ -108,10 +122,40 @@
     <string name="vibration_pattern_pulsating">Pulsating</string>
 
     <!-- Don\'t-kill-my-app notice -->
-    <string name="dkma_title">Important notice</string>
-    <string name="dkma_text">Your device manufacturer may aggressively stop apps running in the background. Please follow the instructions on dontkillmyapp.com to make sure reminders fire reliably.</string>
-    <string name="dkma_open_guide">Open guide</string>
     <string name="dkma_do_not_show_again">Don\'t show again</string>
+
+    <!-- Guided first run -->
+    <string name="setup_title">Let\'s make reminders stick</string>
+    <string name="setup_subtitle">Android stops background apps by default. A few quick switches and your reminders will arrive on time.</string>
+    <string name="setup_continue">Continue</string>
+    <string name="setup_finish">Start using reReminder</string>
+    <string name="setup_skip_hint">You can finish the rest later under Settings &gt; Reliability.</string>
+    <string name="setup_step_done">Done</string>
+    <string name="setup_step_optional">Optional, but reminders may be late without it.</string>
+    <string name="setup_notifications_title">Show notifications</string>
+    <string name="setup_notifications_body">A reminder is a notification, so without this the app has no way to reach you.</string>
+    <string name="setup_notifications_action">Allow notifications</string>
+    <string name="setup_alarms_title">Ring at the exact time</string>
+    <string name="setup_alarms_body">Opens this app\'s alarm switch directly. Without it, Android is free to bundle reminders up and deliver them late.</string>
+    <string name="setup_alarms_action">Open the alarm setting</string>
+    <string name="setup_battery_title">Keep running in the background</string>
+    <string name="setup_battery_body">Asks Android to stop putting the app to sleep. This is a single Allow dialog, not a list to search through.</string>
+    <string name="setup_battery_action">Allow background running</string>
+    <string name="setup_vendor_title">One more, for your phone</string>
+    <string name="setup_vendor_body">Your manufacturer adds its own background limits on top of Android\'s. The guide shows exactly where they live.</string>
+    <string name="setup_vendor_body_named">%1$s adds its own background limits on top of Android\'s. The guide shows, with screenshots, exactly where they live on your phone.</string>
+    <string name="setup_vendor_action">Open the guide</string>
+
+    <!-- Reliability notice -->
+    <string name="reliability_prompt_title">Reminders may be delayed</string>
+    <string name="reliability_prompt_intro">Android can stop reReminder in the background. On this device:</string>
+    <string name="reliability_issue_exact_alarms">Exact alarms are blocked, so reminders can drift or be skipped.</string>
+    <string name="reliability_issue_battery">Battery optimisation is restricting the app.</string>
+    <string name="reliability_issue_vendor">%1$s devices stop background apps more aggressively than Android does.</string>
+    <string name="reliability_issue_vendor_generic">This device may stop background apps more aggressively than Android does.</string>
+    <string name="reliability_prompt_open_settings">Fix this in reReminder settings</string>
+    <string name="reliability_prompt_open_guide">Open the guide</string>
+    <string name="reliability_manufacturer_summary_vendor">Open the %1$s guide on dontkillmyapp.com</string>
 
     <string name="made_in_europe">Made with passion in Europe</string>
 
@@ -129,8 +173,5 @@
     <string name="reliability_screen_missing">Your device does not offer this screen</string>
 
     <!-- Permissions -->
-    <string name="permission_required_title">Notifications required</string>
-    <string name="permission_required_text">To remind you on a loop, reReminder needs permission to post notifications. Please grant it to continue.</string>
-    <string name="permission_grant">Grant permission</string>
     <string name="permission_required_toast">Notification permission is required for the app to work properly.</string>
 </resources>

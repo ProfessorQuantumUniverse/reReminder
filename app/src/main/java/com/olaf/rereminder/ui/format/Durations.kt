@@ -6,6 +6,8 @@ import com.olaf.rereminder.R
 import com.olaf.rereminder.data.Reminder
 import java.text.DateFormat
 import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.time.format.TextStyle
@@ -37,9 +39,52 @@ fun formatCountdown(remainingMillis: Long): String {
     }
 }
 
+/**
+ * A coarse countdown for waits measured in days rather than seconds — a start date three weeks
+ * out reads as "21 d 4 h", not as a five-digit hour count.
+ */
+@Composable
+fun formatCoarseCountdown(remainingMillis: Long): String {
+    val duration = remainingMillis.coerceAtLeast(0L).milliseconds
+    return duration.toComponents { days, hours, minutes, _, _ ->
+        when {
+            days > 0 -> stringResource(R.string.duration_days_hours, days.toInt(), hours)
+            hours > 0 -> stringResource(R.string.duration_hours_minutes, hours, minutes)
+            else -> stringResource(R.string.duration_minutes, minutes.coerceAtLeast(1))
+        }
+    }
+}
+
 /** Wall-clock time in the user's locale, e.g. "15:30" or "3:30 PM". */
 fun formatClockTime(epochMillis: Long): String =
     DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(epochMillis))
+
+/** Date in the user's locale without the year when it is the current one. */
+fun formatCalendarDate(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): String {
+    val date = Reminder.localDateTimeOf(epochMillis, zone).toLocalDate()
+    val pattern = if (date.year == LocalDate.now(zone).year) "EEE, d MMM" else "EEE, d MMM yyyy"
+    return date.format(DateTimeFormatter.ofPattern(pattern, Locale.getDefault()))
+}
+
+/**
+ * The full start moment on one line, e.g. "Today · 09:00" or "Wed, 24 Sept · 09:00".
+ *
+ * Near dates get a word instead of a date, because "Tomorrow at 7" is what the user was thinking
+ * when they set it.
+ */
+@Composable
+fun formatStartMoment(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): String {
+    if (epochMillis <= 0L) return stringResource(R.string.start_immediately)
+
+    val date = Reminder.localDateTimeOf(epochMillis, zone).toLocalDate()
+    val today = LocalDate.now(zone)
+    val dayLabel = when (date) {
+        today -> stringResource(R.string.start_today)
+        today.plusDays(1) -> stringResource(R.string.start_tomorrow)
+        else -> formatCalendarDate(epochMillis, zone)
+    }
+    return stringResource(R.string.schedule_summary, dayLabel, formatClockTime(epochMillis))
+}
 
 /** Formats minutes-from-midnight as a localised time, e.g. 510 -> "8:30". */
 fun formatMinuteOfDay(minuteOfDay: Int): String =
@@ -62,7 +107,7 @@ fun daysLabel(days: Set<Int>): String = when {
     else -> days.sorted().joinToString(", ") { dayShortName(DayOfWeek.of(it)) }
 }
 
-/** The whole schedule on one line, e.g. "Mon–Fri · 8:00–17:00". */
+/** "Mon–Fri · 8:00–17:00". */
 @Composable
 fun scheduleSummary(reminder: Reminder): String {
     val days = daysLabel(reminder.days)

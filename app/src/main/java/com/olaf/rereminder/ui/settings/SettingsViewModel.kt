@@ -1,12 +1,10 @@
 package com.olaf.rereminder.ui.settings
 
 import android.app.Application
-import android.content.Context
 import android.net.Uri
-import android.os.PowerManager
 import androidx.lifecycle.AndroidViewModel
-import com.olaf.rereminder.service.ReminderScheduler
 import com.olaf.rereminder.utils.PreferenceHelper
+import com.olaf.rereminder.utils.Reliability
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +20,10 @@ data class SettingsUiState(
     /** System-level conditions that decide whether reminders actually arrive on time. */
     val exactAlarmsAllowed: Boolean = true,
     val batteryUnrestricted: Boolean = true,
+    /** Empty when the manufacturer could not be read. */
+    val vendorName: String = "",
+    /** The dontkillmyapp.com page for this device, or its general guide. */
+    val guideUrl: String = "https://dontkillmyapp.com/general",
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -31,33 +33,30 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _uiState = MutableStateFlow(readSettings())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
-    private fun readSettings() = SettingsUiState(
-        ringtone = preferences.getSelectedRingtone(),
-        soundEnabled = preferences.isSoundEnabled(),
-        soundType = preferences.getNotificationSoundType(),
-        vibrationEnabled = preferences.isVibrationEnabled(),
-        vibrationPattern = preferences.getVibrationPattern(),
-        exactAlarmsAllowed = exactAlarmsAllowed(),
-        batteryUnrestricted = batteryUnrestricted(),
-    )
+    private fun readSettings(): SettingsUiState {
+        val status = Reliability.status(getApplication())
+        return SettingsUiState(
+            ringtone = preferences.getSelectedRingtone(),
+            soundEnabled = preferences.isSoundEnabled(),
+            soundType = preferences.getNotificationSoundType(),
+            vibrationEnabled = preferences.isVibrationEnabled(),
+            vibrationPattern = preferences.getVibrationPattern(),
+            exactAlarmsAllowed = status.exactAlarmsAllowed,
+            batteryUnrestricted = status.batteryUnrestricted,
+            vendorName = status.vendorName,
+            guideUrl = status.guideUrl,
+        )
+    }
 
     /** Both can be changed outside the app, so re-read them whenever the screen resumes. */
     fun refreshSystemStatus() {
+        val status = Reliability.status(getApplication())
         _uiState.update {
             it.copy(
-                exactAlarmsAllowed = exactAlarmsAllowed(),
-                batteryUnrestricted = batteryUnrestricted(),
+                exactAlarmsAllowed = status.exactAlarmsAllowed,
+                batteryUnrestricted = status.batteryUnrestricted,
             )
         }
-    }
-
-    private fun exactAlarmsAllowed(): Boolean =
-        ReminderScheduler(getApplication()).canScheduleExactAlarms()
-
-    private fun batteryUnrestricted(): Boolean {
-        val context = getApplication<Application>()
-        val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
-        return powerManager?.isIgnoringBatteryOptimizations(context.packageName) ?: true
     }
 
     fun getSelectedRingtone(): Uri? = _uiState.value.ringtone

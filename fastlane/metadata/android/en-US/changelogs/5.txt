@@ -1,0 +1,12 @@
+reReminder 3.1 — a calmer app that is easier to set up.
+
+- Start date and time: a reminder can now begin at a moment you pick, not just "one interval from now". Set a start of tomorrow 09:00 with a 24 h interval and it fires at 09:00 every day. The list shows "Starts tomorrow - 09:00" until the loop begins.
+- Interval picker rebuilt: flick a wheel instead of tapping a stepper fifteen times, or tap a preset (5 min to 4 h). The value updates while you drag.
+- Guided first run: notifications, exact alarms and battery optimization are now three explained steps, each landing on the switch that actually matters. The battery step is a single system dialog instead of a list of every installed app to search through.
+- Reliability notice now names what it found and links to the dontkillmyapp.com page for your device, not the site's front page. It returns only if a new problem appears.
+- Redesigned throughout: one navigation flow with animated transitions, a title that shrinks as you scroll, press feedback and haptics, and a simplified editor that fits on one screen without losing a single option.
+
+Fixes:
+- Reminders with a start time no longer drift: a reminder missed while the phone was off used to resume at whatever time the phone came back.
+- Honor and LG devices were sent to a dontkillmyapp.com page that does not exist.
+- Device detection no longer mistakes Micromax and Umidigi phones for Xiaomis.

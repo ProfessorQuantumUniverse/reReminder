@@ -2,42 +2,48 @@ package com.olaf.rereminder.ui.editor
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.SavedStateHandle
 import com.olaf.rereminder.data.Reminder
 import com.olaf.rereminder.data.ReminderRepository
 import com.olaf.rereminder.service.ReminderScheduler
+import com.olaf.rereminder.ui.navigation.Routes
 import com.olaf.rereminder.ui.theme.ReminderAccents
 import com.olaf.rereminder.utils.NotificationHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class ReminderEditorViewModel(application: Application) : AndroidViewModel(application) {
+/**
+ * Holds the reminder being edited.
+ *
+ * The id arrives through [SavedStateHandle] — it is a navigation argument — so the draft is
+ * already loaded by the time the screen first composes, and the editor never renders a frame of
+ * a blank reminder before filling itself in.
+ */
+class ReminderEditorViewModel(
+    application: Application,
+    savedStateHandle: SavedStateHandle,
+) : AndroidViewModel(application) {
 
     private val repository = ReminderRepository.get(application)
     private val scheduler = ReminderScheduler(application)
 
-    private val _draft = MutableStateFlow(Reminder(id = NEW_ID))
-    val draft: StateFlow<Reminder> = _draft.asStateFlow()
+    private val existing: Reminder? =
+        savedStateHandle.get<Int>(Routes.ARG_ID)
+            ?.takeIf { it > NEW_ID }
+            ?.let { repository.get(it) }
 
-    private var initialized = false
+    val isNew: Boolean = existing == null
 
-    var isNew: Boolean = true
-        private set
-
-    /** Loads [id], or seeds a new timer. Safe to call again after a configuration change. */
-    fun initialize(id: Int) {
-        if (initialized) return
-        initialized = true
-
-        val existing = if (id > NEW_ID) repository.get(id) else null
-        isNew = existing == null
-        _draft.value = existing ?: Reminder(
+    private val _draft = MutableStateFlow(
+        existing ?: Reminder(
             id = NEW_ID,
             intervalMinutes = DEFAULT_INTERVAL_MINUTES,
             // Give each new timer a different accent so the list stays easy to scan.
             colorIndex = repository.reminders.value.size % ReminderAccents.size,
         )
-    }
+    )
+    val draft: StateFlow<Reminder> = _draft.asStateFlow()
 
     fun update(transform: (Reminder) -> Reminder) {
         _draft.value = transform(_draft.value)

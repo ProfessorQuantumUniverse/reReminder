@@ -7,11 +7,14 @@ import com.olaf.rereminder.data.Reminder
 import com.olaf.rereminder.data.ReminderRepository
 import com.olaf.rereminder.service.ReminderScheduler
 import com.olaf.rereminder.utils.PreferenceHelper
+import com.olaf.rereminder.utils.Reliability
+import com.olaf.rereminder.utils.ReliabilityStatus
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
@@ -21,6 +24,8 @@ data class ReminderRow(
     val reminder: Reminder,
     val remainingMillis: Long,
     val isWithinSchedule: Boolean,
+    /** True while the pinned start date is still ahead, so the loop has not begun. */
+    val isPending: Boolean = false,
 ) {
     val id: Int get() = reminder.id
 
@@ -28,7 +33,10 @@ data class ReminderRow(
     val progress: Float
         get() {
             val total = reminder.intervalMillis
-            if (!reminder.enabled || total <= 0L || reminder.nextTriggerAt <= 0L) return 0f
+            // A timer waiting for its start date has no interval to be partway through yet.
+            if (isPending || !reminder.enabled || total <= 0L || reminder.nextTriggerAt <= 0L) {
+                return 0f
+            }
             return ((total - remainingMillis).toFloat() / total).coerceIn(0f, 1f)
         }
 }
@@ -57,6 +65,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val masterEnabled = MutableStateFlow(preferences.isMasterEnabled())
 
+    /** Non-null while there is a reliability problem the user has not been told about yet. */
+    private val _reliabilityPrompt = MutableStateFlow<ReliabilityStatus?>(null)
+    val reliabilityPrompt: StateFlow<ReliabilityStatus?> = _reliabilityPrompt.asStateFlow()
+
     /** Only runs while [uiState] has collectors, i.e. while the list is actually on screen. */
     private val ticker: Flow<Unit> = flow {
         while (true) {
@@ -74,6 +86,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         reminder = reminder,
                         remainingMillis = (reminder.nextTriggerAt - now).coerceAtLeast(0L),
                         isWithinSchedule = reminder.isActiveAt(now),
+                        isPending = reminder.isPending(now),
                     )
                 },
                 masterEnabled = master,
@@ -103,6 +116,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun refresh() {
         masterEnabled.value = preferences.isMasterEnabled()
         scheduler.sync()
+        checkReliability()
+    }
+
+    /**
+     * Re-checked on every resume rather than once at startup: the user may have just come back
+     * from the system screen where they revoked exact alarms.
+     */
+    private fun checkReliability() {
+        val status = Reliability.status(getApplication())
+        _reliabilityPrompt.value = status.takeIf {
+            it.needsAttention &&
+                !preferences.isReliabilityPromptDismissed(it.signature, it.isVendorOnly)
+        }
+    }
+
+    /** Stops this particular set of problems being raised again. */
+    fun dismissReliabilityPrompt() {
+        _reliabilityPrompt.value?.let { preferences.setReliabilityPromptDismissed(it.signature) }
+        _reliabilityPrompt.value = null
+    }
+
+    /** "Don't show again" — no reliability notice from here on, whatever changes. */
+    fun silenceReliabilityPrompt() {
+        preferences.silenceReliabilityPrompt()
+        _reliabilityPrompt.value = null
     }
 
     private companion object {
