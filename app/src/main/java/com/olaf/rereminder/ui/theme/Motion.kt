@@ -2,6 +2,7 @@ package com.olaf.rereminder.ui.theme
 
 import android.view.HapticFeedbackConstants
 import android.view.View
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -48,6 +49,24 @@ object Motion {
 
     const val ENTER_MILLIS = 320
     const val EXIT_MILLIS = 220
+
+    /**
+     * Screen transitions are the one place that deliberately does not use springs.
+     *
+     * With predictive back the system scrubs the pop transition along with the user's thumb and
+     * then plays out the rest, and that only lines up when every part of the transition has a real
+     * duration. Mixing a spring scale with a short tween fade meant a screen shrank under the
+     * finger, then vanished in a single frame once the fade had long finished. Here every part of
+     * a screen transition runs the same length, so scale, slide and fade arrive together.
+     */
+    const val SCREEN_ENTER_MILLIS = 380
+    const val SCREEN_EXIT_MILLIS = 300
+
+    fun <T> screenEnter() = tween<T>(SCREEN_ENTER_MILLIS, easing = EmphasizedDecelerate)
+    fun <T> screenExit() = tween<T>(SCREEN_EXIT_MILLIS, easing = EmphasizedAccelerate)
+
+    private val EmphasizedDecelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
+    private val EmphasizedAccelerate = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
 }
 
 /**

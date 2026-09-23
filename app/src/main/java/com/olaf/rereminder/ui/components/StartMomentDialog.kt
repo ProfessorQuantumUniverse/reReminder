@@ -187,6 +187,10 @@ fun StartMomentDialog(
                                 onStartNow = { onConfirm(0L) },
                                 onPickShortcut = { date ->
                                     datePickerState.selectedDateMillis = date.toUtcMillis()
+                                    // Selecting alone leaves the grid where it was, so "Next
+                                    // Monday" at the end of a month ticked a day nobody could see.
+                                    datePickerState.displayedMonthMillis =
+                                        date.withDayOfMonth(1).toUtcMillis()
                                 },
                                 datePicker = {
                                     DatePicker(

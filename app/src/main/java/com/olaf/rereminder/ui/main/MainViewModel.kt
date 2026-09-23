@@ -84,7 +84,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 rows = reminders.map { reminder ->
                     ReminderRow(
                         reminder = reminder,
-                        remainingMillis = (reminder.nextTriggerAt - now).coerceAtLeast(0L),
+                        // Whole seconds, rounded up: the countdown shows 00:01 until the moment it
+                        // fires, and ticks between states that only differ by milliseconds compare
+                        // equal, so the StateFlow drops them instead of recomposing the list.
+                        remainingMillis = ceilToSecond(reminder.nextTriggerAt - now),
                         isWithinSchedule = reminder.isActiveAt(now),
                         isPending = reminder.isPending(now),
                     )
@@ -144,7 +147,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private companion object {
-        const val TICK_MILLIS = 1_000L
+        /**
+         * Well under a second on purpose. Each timer's seconds roll over at its own offset, and a
+         * one-second delay drifts against all of them, so the display would now and then hold a
+         * second twice and then skip the next one.
+         */
+        const val TICK_MILLIS = 250L
         const val STOP_TIMEOUT_MILLIS = 5_000L
+
+        fun ceilToSecond(millis: Long): Long =
+            if (millis <= 0L) 0L else (millis + 999L) / 1_000L * 1_000L
     }
 }

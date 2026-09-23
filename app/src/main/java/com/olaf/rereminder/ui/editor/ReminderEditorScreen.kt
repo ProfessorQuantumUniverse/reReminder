@@ -198,8 +198,10 @@ fun ReminderEditorScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                // Padding inside the scroll, so the content passes behind the collapsed header
+                // instead of being clipped at the height the expanded one reserves.
                 .verticalScroll(scrollState)
+                .padding(innerPadding)
                 .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
@@ -340,7 +342,15 @@ fun ReminderEditorScreen(
             title = { Text(stringResource(R.string.editor_delete_confirm_title)) },
             text = { Text(stringResource(R.string.editor_delete_confirm_text, name)) },
             confirmButton = {
-                Button(onClick = onDelete) { Text(stringResource(R.string.action_delete)) }
+                Button(
+                    onClick = {
+                        // A dialog is its own window: left open, it would sit on top of the whole
+                        // exit transition and only vanish once the editor had gone.
+                        showDeleteDialog = false
+                        view.tap()
+                        onDelete()
+                    },
+                ) { Text(stringResource(R.string.action_delete)) }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
@@ -678,20 +688,12 @@ private fun DayToggle(
         animationSpec = Motion.fade(),
         label = "dayText",
     )
-    // Selecting a day pops it, which makes tapping across the row feel like playing keys.
-    val scale by animateFloatAsState(
-        targetValue = if (selected) 1.06f else 1f,
-        animationSpec = Motion.expressive(),
-        label = "dayScale",
-    )
-
+    // No resting scale for the selected state: the pills sit only a few dp apart, and a bouncy
+    // spring past 1f pushed neighbours into each other. The press scale from `tappable` and the
+    // colour fill are feedback enough.
     Box(
         modifier = modifier
             .height(42.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
             .clip(CircleShape)
             .background(background)
             .tappable(pressedScale = 0.88f, onClick = onClick),

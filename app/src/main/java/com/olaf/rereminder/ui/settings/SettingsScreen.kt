@@ -202,8 +202,10 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                // Padding inside the scroll, so the content passes behind the collapsed header
+                // instead of being clipped at the height the expanded one reserves.
                 .verticalScroll(scrollState)
+                .padding(innerPadding)
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -233,11 +235,18 @@ fun SettingsScreen(
                     enter = fadeIn() + expandVertically(Motion.spatial()),
                     exit = fadeOut() + shrinkVertically(Motion.snappy()),
                 ) {
+                    // Resolving the title queries a content provider, so it happens once per
+                    // ringtone rather than on every recomposition of the screen.
+                    val ringtoneTitle = remember(uiState.ringtone) {
+                        uiState.ringtone?.let { uri ->
+                            runCatching {
+                                RingtoneManager.getRingtone(context, uri)?.getTitle(context)
+                            }.getOrNull()
+                        }
+                    }
                     SectionItem(
                         title = stringResource(R.string.ringtone_title),
-                        subtitle = uiState.ringtone
-                            ?.let { RingtoneManager.getRingtone(context, it)?.getTitle(context) }
-                            ?: stringResource(R.string.default_label),
+                        subtitle = ringtoneTitle ?: stringResource(R.string.default_label),
                         onClick = onShowRingtonePicker,
                         enabled = uiState.soundEnabled,
                     )

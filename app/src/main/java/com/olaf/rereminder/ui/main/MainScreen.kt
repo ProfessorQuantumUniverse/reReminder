@@ -18,7 +18,6 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -89,6 +88,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.olaf.rereminder.R
 import com.olaf.rereminder.data.Reminder
 import com.olaf.rereminder.ui.components.CollapsingHeader
+import com.olaf.rereminder.ui.components.LiveText
 import com.olaf.rereminder.ui.components.MadeInEurope
 import com.olaf.rereminder.ui.components.rememberCollapseProgress
 import com.olaf.rereminder.ui.format.formatClockTime
@@ -309,23 +309,13 @@ private fun MasterCard(
                 Spacer(Modifier.height(2.dp))
 
                 val summary = masterSummary(uiState)
-                // The summary changes every second while a countdown is running, so it cross-fades
-                // rather than blinking from one string to the next.
-                AnimatedContent(
-                    targetState = summary,
-                    transitionSpec = {
-                        fadeIn(tween(180)).togetherWith(fadeOut(tween(120)))
-                    },
-                    label = "masterSummary",
-                ) { text ->
-                    Text(
-                        text = text,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = contentColor.copy(alpha = 0.8f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                // Only the countdown's digits tick; the sentence around it stays put.
+                LiveText(
+                    text = summary.text,
+                    ticker = summary.ticker,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = contentColor.copy(alpha = 0.8f),
+                )
             }
             Switch(
                 checked = on,
@@ -335,30 +325,43 @@ private fun MasterCard(
     }
 }
 
+/** A line of text and, when it contains one, the live countdown inside it. */
+private data class StatusLine(val text: String, val ticker: String? = null)
+
 @Composable
-private fun masterSummary(uiState: MainUiState): String {
+private fun masterSummary(uiState: MainUiState): StatusLine {
     val next = uiState.nextUp
     val fallbackName = stringResource(R.string.reminder_default_name)
     return when {
-        !uiState.masterEnabled -> stringResource(R.string.master_paused)
-        next == null -> stringResource(R.string.master_nothing_running)
-        next.isPending -> stringResource(
-            R.string.master_next_on,
-            next.reminder.name.ifBlank { fallbackName },
-            formatStartMoment(next.reminder.startAtMillis),
+        !uiState.masterEnabled -> StatusLine(stringResource(R.string.master_paused))
+        next == null -> StatusLine(stringResource(R.string.master_nothing_running))
+        next.isPending -> StatusLine(
+            stringResource(
+                R.string.master_next_on,
+                next.reminder.name.ifBlank { fallbackName },
+                formatStartMoment(next.reminder.startAtMillis),
+            )
         )
 
-        !next.isWithinSchedule -> stringResource(
-            R.string.master_next_at,
-            next.reminder.name.ifBlank { fallbackName },
-            formatClockTime(next.reminder.nextTriggerAt),
+        !next.isWithinSchedule -> StatusLine(
+            stringResource(
+                R.string.master_next_at,
+                next.reminder.name.ifBlank { fallbackName },
+                formatClockTime(next.reminder.nextTriggerAt),
+            )
         )
 
-        else -> stringResource(
-            R.string.master_next_in,
-            next.reminder.name.ifBlank { fallbackName },
-            formatCountdown(next.remainingMillis),
-        )
+        else -> {
+            val countdown = formatCountdown(next.remainingMillis)
+            StatusLine(
+                stringResource(
+                    R.string.master_next_in,
+                    next.reminder.name.ifBlank { fallbackName },
+                    countdown,
+                ),
+                ticker = countdown,
+            )
+        }
     }
 }
 
@@ -473,9 +476,8 @@ private fun ReminderCard(
                             modifier = iconModifier,
                         )
                     },
-                    text = statusText(row, masterEnabled),
+                    status = statusText(row, masterEnabled),
                     emphasised = active && row.isWithinSchedule && !row.isPending,
-                    animateText = true,
                 )
             }
 
@@ -534,18 +536,23 @@ private fun StartBanner(startAtMillis: Long, remainingMillis: Long, accent: Colo
 }
 
 @Composable
-private fun statusText(row: ReminderRow, masterEnabled: Boolean): String {
+private fun statusText(row: ReminderRow, masterEnabled: Boolean): StatusLine {
     val reminder = row.reminder
     return when {
-        !masterEnabled || !reminder.enabled -> stringResource(R.string.paused)
-        row.isPending -> stringResource(R.string.not_started_yet)
-        reminder.nextTriggerAt <= 0L -> stringResource(R.string.schedule_never)
-        !row.isWithinSchedule -> stringResource(
-            R.string.waiting_for_window,
-            formatClockTime(reminder.nextTriggerAt),
+        !masterEnabled || !reminder.enabled -> StatusLine(stringResource(R.string.paused))
+        row.isPending -> StatusLine(stringResource(R.string.not_started_yet))
+        reminder.nextTriggerAt <= 0L -> StatusLine(stringResource(R.string.schedule_never))
+        !row.isWithinSchedule -> StatusLine(
+            stringResource(
+                R.string.waiting_for_window,
+                formatClockTime(reminder.nextTriggerAt),
+            )
         )
 
-        else -> stringResource(R.string.next_in, formatCountdown(row.remainingMillis))
+        else -> {
+            val countdown = formatCountdown(row.remainingMillis)
+            StatusLine(stringResource(R.string.next_in, countdown), ticker = countdown)
+        }
     }
 }
 
@@ -652,10 +659,10 @@ private const val IMMINENT_MILLIS = 60_000L
 @Composable
 private fun MetaChip(
     icon: @Composable (Modifier) -> Unit,
-    text: String,
     modifier: Modifier = Modifier,
+    text: String = "",
+    status: StatusLine? = null,
     emphasised: Boolean = false,
-    animateText: Boolean = false,
 ) {
     val containerColor by animateColorAsState(
         targetValue = if (emphasised) {
@@ -688,25 +695,13 @@ private fun MetaChip(
         ) {
             icon(Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
-            if (animateText) {
-                // A ticking countdown rolls upward one value at a time.
-                AnimatedContent(
-                    targetState = text,
-                    transitionSpec = {
-                        (slideInVertically(Motion.snappy()) { h -> h } + fadeIn(tween(140)))
-                            .togetherWith(
-                                slideOutVertically(Motion.snappy()) { h -> -h } + fadeOut(tween(140))
-                            )
-                    },
-                    label = "chipText",
-                ) { value ->
-                    Text(
-                        text = value,
-                        style = MaterialTheme.typography.labelMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+            if (status != null) {
+                // A ticking countdown rolls only the digits that changed.
+                LiveText(
+                    text = status.text,
+                    ticker = status.ticker,
+                    style = MaterialTheme.typography.labelMedium,
+                )
             } else {
                 Text(
                     text = text,

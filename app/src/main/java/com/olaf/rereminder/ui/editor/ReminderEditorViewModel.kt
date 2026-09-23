@@ -53,9 +53,16 @@ class ReminderEditorViewModel(
     val canSave: Boolean
         get() = _draft.value.days.isNotEmpty() && _draft.value.intervalMinutes > 0
 
+    /**
+     * Set once the draft has been saved or deleted. The editor keeps taking taps while it animates
+     * away, and a second tap on Save for a new timer would otherwise add it twice.
+     */
+    private var finished = false
+
     fun save() {
         val draft = _draft.value
-        if (draft.days.isEmpty() || draft.intervalMinutes <= 0) return
+        if (finished || draft.days.isEmpty() || draft.intervalMinutes <= 0) return
+        finished = true
 
         val id = if (isNew) {
             repository.add(draft.copy(nextTriggerAt = 0L)).id
@@ -69,7 +76,8 @@ class ReminderEditorViewModel(
 
     fun delete() {
         val id = _draft.value.id
-        if (id <= NEW_ID) return
+        if (finished || id <= NEW_ID) return
+        finished = true
 
         scheduler.cancel(id)
         repository.delete(id)

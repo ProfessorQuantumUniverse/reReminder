@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -72,8 +73,45 @@ fun CollapsingHeader(
         label = "headerContainer",
     )
 
+    // The header always reserves its expanded height, however far it has collapsed, and the
+    // collapsing bar is drawn inside that space. If the reserved height followed the collapse, the
+    // Scaffold would hand the content a different top padding on every frame, which changes how
+    // far the content can scroll, which changes the collapse: at the end of a list that feedback
+    // loop never settled and the title flickered between two sizes. The part of the reservation
+    // the bar no longer covers is empty and takes no touches, so content scrolls up behind it.
+    Box(modifier = modifier.fillMaxWidth()) {
+        Spacer(
+            Modifier
+                .statusBarsPadding()
+                .height(ExpandedHeight),
+        )
+        CollapsingBar(
+            title = title,
+            progress = p,
+            height = height,
+            startPadding = startPadding,
+            titleScale = titleScale,
+            containerColor = containerColor,
+            navigationIcon = navigationIcon,
+            actions = actions,
+        )
+    }
+}
+
+@Composable
+private fun CollapsingBar(
+    title: String,
+    progress: Float,
+    height: Dp,
+    startPadding: Dp,
+    titleScale: Float,
+    containerColor: Color,
+    navigationIcon: @Composable (() -> Unit)?,
+    actions: @Composable RowScope.() -> Unit,
+) {
+    val p = progress
     Box(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             // Fill first, inset second: the container colour runs behind the status bar while the
             // title and actions sit below it.

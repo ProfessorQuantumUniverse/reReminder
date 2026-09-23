@@ -1,0 +1,10 @@
+reReminder 3.1.1 - polish and fixes.
+
+- Countdowns no longer flash the whole line every second; only the changing digits roll.
+- Interval presets now apply exactly as tapped.
+- Weekday pills no longer bump into each other.
+- Title no longer flickers at the end of a list.
+- Smoother closing of screens, incl. the back gesture.
+- Delete dialog closes right away.
+- Double taps can no longer save a reminder twice or close the app to an empty screen.
+- Countdowns no longer skip seconds.

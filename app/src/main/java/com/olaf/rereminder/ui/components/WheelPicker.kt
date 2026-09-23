@@ -13,7 +13,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,14 +79,25 @@ fun <T> WheelPicker(
         }
     }
 
+    // The collector below outlives any single composition, so it must read the latest selection
+    // and callback rather than the ones captured when it started.
+    val currentSelected by rememberUpdatedState(selected)
+    val currentOnValueChange by rememberUpdatedState(onValueChange)
+
+    // True while the wheel is gliding to a value set from outside. The values it passes on the way
+    // are not choices: reporting them would overwrite the preset with whatever the wheel happened
+    // to cross first — tapping "5 min" from "4 h" used to land on 3 h 05 min.
+    var gliding by remember { mutableStateOf(false) }
+
     LaunchedEffect(values) {
         snapshotFlow { centeredIndex }
             .distinctUntilChanged()
             .collect { index ->
+                if (gliding) return@collect
                 val value = values[index]
-                if (value != selected) {
+                if (value != currentSelected) {
                     view.tick()
-                    onValueChange(value)
+                    currentOnValueChange(value)
                 }
             }
     }
@@ -92,7 +106,14 @@ fun <T> WheelPicker(
     LaunchedEffect(selected) {
         val target = values.indexOf(selected)
         if (target >= 0 && target != centeredIndex && !listState.isScrollInProgress) {
-            listState.animateScrollToItem(target)
+            gliding = true
+            try {
+                listState.animateScrollToItem(target)
+            } finally {
+                // A finger landing on the wheel mid-glide cancels it; from then on it is the
+                // user choosing again.
+                gliding = false
+            }
         }
     }
 
