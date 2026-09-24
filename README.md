@@ -51,7 +51,7 @@ Since **3.0** you are no longer limited to a single reminder: run as many indepe
 ### Multiple reminders
 *   **As many loops as you need:** "Take a walk" every 50 minutes and "Sit or stand" every 20 minutes run side by side, each counting down independently.
 *   **Colour coded:** Give every reminder its own accent so the list stays readable at a glance.
-*   **Master switch:** Pause everything with one toggle — and see which reminder is up next and when — without losing each reminder's individual state.
+*   **Master switch:** Pause everything with one toggle, and see which reminder is up next and when, without losing each reminder's individual state.
 
 ### Schedules
 *   **Pick your days:** Run a reminder only Mon–Fri, only on weekends, or on any combination of weekdays.
@@ -59,14 +59,14 @@ Since **3.0** you are no longer limited to a single reminder: run as many indepe
 *   **Off by default:** A new reminder simply runs at any time. The schedule is one switch away when you want it, and invisible when you don't.
 
 ### Notifications
-*   **Dynamic text:** Insert values that are filled in the moment the reminder fires — `{time}`, `{date}`, `{day}`, `{name}`, `{interval}` and `{next}` — with a live preview while you type.
+*   **Dynamic text:** Insert values that are filled in the moment the reminder fires, `{time}`, `{date}`, `{day}`, `{name}`, `{interval}` and `{next}`, with a live preview while you type.
 *   **Text-to-Speech (TTS):** Let the app *speak* your message so you don't have to look at your phone. It follows your device language.
 *   **Haptic Control:** Fully customizable vibration patterns.
 *   **Sound Selection:** Choose from system notification sounds, or mute sound and vibration per reminder.
 
 ### Built to actually fire
 *   **Exact alarms** that survive Doze, reboots, app updates, and clock or timezone changes.
-*   **Reliability check** in the settings: see at a glance whether exact alarms are permitted and whether battery optimisation is holding your reminders back — and jump straight to the right system screen to fix it.
+*   **Reliability check** in the settings: see at a glance whether exact alarms are permitted and whether battery optimisation is holding your reminders back, and jump straight to the right system screen to fix it.
 *   **Self-healing loop:** the next alarm is armed before the notification is even posted, so a single failure can never break the chain.
 
 ### Look & feel
@@ -81,7 +81,7 @@ I believe your phone belongs to **you**.
 *   **No Ads**
 *   **No Tracking / Analytics**
 *   **No Unnecessary Permissions**
-*   **Offline First** — everything is stored on your device, nothing ever leaves it.
+*   **Offline First**, everything is stored on your device, nothing ever leaves it.
 
 ## 📸 Screenshots
 
@@ -129,7 +129,7 @@ cd reReminder
 | Build | Gradle 9.6 · Android Gradle Plugin 9.3 |
 | SDK | min 26 (Android 8) · target 37 |
 | JDK | 17 |
-| Storage | SharedPreferences + kotlinx.serialization — no database, no network |
+| Storage | SharedPreferences + kotlinx.serialization, no database, no network |
 
 Reminders are scheduled with `AlarmManager`; there is no foreground service and no background polling.
 
@@ -152,5 +152,5 @@ Distributed under the GNU General Public License v3.0 License. See `LICENSE` for
 ---
 
 <div align="center">
-🇪🇺 Made with passion in Europe — with ❤️ for the Android Community
+🇪🇺 Made with passion in Europe, with ❤️ for the Android Community
 </div>
