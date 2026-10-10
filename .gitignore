@@ -16,3 +16,4 @@ local.properties
 *.claude
 /app/release
 app/src/main/assets/adi-registration.properties
+.kotlin/
