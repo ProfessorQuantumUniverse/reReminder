@@ -15,8 +15,8 @@ android {
         applicationId = "com.olaf.rereminder"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 6
-        versionName = "3.1.1"
+        versionCode = 7
+        versionName = "4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -56,8 +56,9 @@ dependencies {
     // Provides the Theme.Material3.DayNight parent used by the manifest theme.
     implementation(libs.material)
 
-    // Reminders are persisted as JSON in SharedPreferences.
+    // Reminders are persisted as a JSON file.
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.reorderable)
 
     // Lifecycle / ViewModel
     implementation(libs.androidx.lifecycle.runtime.ktx)

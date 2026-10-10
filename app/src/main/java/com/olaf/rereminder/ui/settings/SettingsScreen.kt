@@ -11,15 +11,12 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -96,19 +93,20 @@ fun SettingsRoute(
     val ringtonePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val uri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                result.data?.getParcelableExtra(
-                    RingtoneManager.EXTRA_RINGTONE_PICKED_URI,
-                    Uri::class.java,
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
-            }
-            viewModel.setSelectedRingtone(uri)
-        }
+        if (result.resultCode == Activity.RESULT_OK) viewModel.setSelectedRingtone(result.data.pickedUri())
     }
+    val alarmTonePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) viewModel.setAlarmTone(result.data.pickedUri())
+    }
+
+    fun pickerIntent(type: Int, existing: Uri?) =
+        Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, type)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, ringtonePickerTitle)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, existing)
+        }
 
     // The user may have just changed exact-alarm or battery settings in the system UI.
     LifecycleResumeEffect(viewModel) {
@@ -120,20 +118,20 @@ fun SettingsRoute(
         uiState = uiState,
         onBack = onBack,
         onShowRingtonePicker = {
-            val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
-                putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION)
-                putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, ringtonePickerTitle)
-                putExtra(
-                    RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
-                    viewModel.getSelectedRingtone(),
-                )
+            runCatching {
+                ringtonePicker.launch(pickerIntent(RingtoneManager.TYPE_NOTIFICATION, uiState.ringtone))
             }
-            ringtonePicker.launch(intent)
         },
-        onSoundEnabledChange = viewModel::setSoundEnabled,
-        onSoundTypeChange = viewModel::setNotificationSoundType,
+        onShowAlarmTonePicker = {
+            runCatching {
+                alarmTonePicker.launch(pickerIntent(RingtoneManager.TYPE_ALARM, uiState.alarmTone))
+            }
+        },
+        onSpeechStreamChange = viewModel::setSpeechStream,
+        onSnoozeChange = viewModel::setSnoozeMinutes,
         onVibrationEnabledChange = viewModel::setVibrationEnabled,
         onVibrationPatternChange = viewModel::setVibrationPattern,
+        onCompactListChange = viewModel::setCompactList,
         // Both land on this app's own switch rather than a list of every installed app.
         onFixExactAlarms = { context.openFirstAvailable(Reliability.exactAlarmIntents(context)) },
         onFixBattery = { context.openFirstAvailable(Reliability.batteryIntents(context)) },
@@ -144,6 +142,14 @@ fun SettingsRoute(
         },
     )
 }
+
+private fun Intent?.pickedUri(): Uri? =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        this?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
+    } else {
+        @Suppress("DEPRECATION")
+        this?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+    }
 
 /** Not every OEM ships the system screens these intents point at. */
 private fun Context.startActivitySafely(intent: Intent) {
@@ -165,10 +171,12 @@ fun SettingsScreen(
     uiState: SettingsUiState,
     onBack: () -> Unit,
     onShowRingtonePicker: () -> Unit,
-    onSoundEnabledChange: (Boolean) -> Unit,
-    onSoundTypeChange: (String) -> Unit,
+    onShowAlarmTonePicker: () -> Unit,
+    onSpeechStreamChange: (String) -> Unit,
+    onSnoozeChange: (Int) -> Unit,
     onVibrationEnabledChange: (Boolean) -> Unit,
     onVibrationPatternChange: (Int) -> Unit,
+    onCompactListChange: (Boolean) -> Unit,
     onFixExactAlarms: () -> Unit,
     onFixBattery: () -> Unit,
     onOpenDkma: () -> Unit,
@@ -179,7 +187,8 @@ fun SettingsScreen(
     val collapseProgress by rememberCollapseProgress(scrollState)
 
     var showVibrationDialog by rememberSaveable { mutableStateOf(false) }
-    var showSoundTypeDialog by rememberSaveable { mutableStateOf(false) }
+    var showSpeechDialog by rememberSaveable { mutableStateOf(false) }
+    var showSnoozeDialog by rememberSaveable { mutableStateOf(false) }
 
 
     Scaffold(
@@ -210,47 +219,32 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             SectionCard(title = stringResource(R.string.settings_group_alerts)) {
-                SectionSwitchRow(
-                    title = stringResource(R.string.sound_enabled_label),
-                    checked = uiState.soundEnabled,
-                    onCheckedChange = onSoundEnabledChange,
+                // What "Default" sounds like in a reminder's own sound choice.
+                SectionItem(
+                    title = stringResource(R.string.ringtone_title),
+                    subtitle = rememberToneTitle(context, uiState.ringtone)
+                        ?: stringResource(R.string.default_label),
+                    onClick = onShowRingtonePicker,
+                )
+                SectionItem(
+                    title = stringResource(R.string.alarm_tone_title),
+                    subtitle = rememberToneTitle(context, uiState.alarmTone)
+                        ?: stringResource(R.string.default_label),
+                    onClick = onShowAlarmTonePicker,
                 )
                 SectionDivider()
+                // Spoken reminders follow the volume chosen here, so a muted video can't swallow
+                // them (#9).
                 SectionItem(
-                    title = stringResource(R.string.sound_mode_title),
-                    subtitle = stringResource(
-                        if (uiState.soundType == PreferenceHelper.SOUND_TYPE_TTS) {
-                            R.string.sound_mode_tts
-                        } else {
-                            R.string.sound_mode_ringtone
-                        }
-                    ),
-                    onClick = { showSoundTypeDialog = true },
-                    enabled = uiState.soundEnabled,
+                    title = stringResource(R.string.speech_stream_title),
+                    subtitle = stringResource(speechStreamLabel(uiState.speechStream)),
+                    onClick = { showSpeechDialog = true },
                 )
-                // The ringtone row only makes sense while a ringtone is what actually plays, so
-                // it slides away rather than sitting there greyed out.
-                AnimatedVisibility(
-                    visible = uiState.soundType == PreferenceHelper.SOUND_TYPE_RINGTONE,
-                    enter = fadeIn() + expandVertically(Motion.spatial()),
-                    exit = fadeOut() + shrinkVertically(Motion.snappy()),
-                ) {
-                    // Resolving the title queries a content provider, so it happens once per
-                    // ringtone rather than on every recomposition of the screen.
-                    val ringtoneTitle = remember(uiState.ringtone) {
-                        uiState.ringtone?.let { uri ->
-                            runCatching {
-                                RingtoneManager.getRingtone(context, uri)?.getTitle(context)
-                            }.getOrNull()
-                        }
-                    }
-                    SectionItem(
-                        title = stringResource(R.string.ringtone_title),
-                        subtitle = ringtoneTitle ?: stringResource(R.string.default_label),
-                        onClick = onShowRingtonePicker,
-                        enabled = uiState.soundEnabled,
-                    )
-                }
+                SectionItem(
+                    title = stringResource(R.string.snooze_title),
+                    subtitle = stringResource(R.string.snooze_minutes, uiState.snoozeMinutes),
+                    onClick = { showSnoozeDialog = true },
+                )
                 SectionDivider()
                 SectionSwitchRow(
                     title = stringResource(R.string.vibration_enabled_label),
@@ -271,6 +265,15 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 8.dp),
             )
+
+            SectionCard(title = stringResource(R.string.settings_group_display)) {
+                SectionSwitchRow(
+                    title = stringResource(R.string.compact_list_title),
+                    subtitle = stringResource(R.string.compact_list_summary),
+                    checked = uiState.compactList,
+                    onCheckedChange = onCompactListChange,
+                )
+            }
 
             SectionCard(title = stringResource(R.string.settings_group_reliability)) {
                 StatusItem(
@@ -341,22 +344,55 @@ fun SettingsScreen(
         )
     }
 
-    if (showSoundTypeDialog) {
-        val types = listOf(PreferenceHelper.SOUND_TYPE_RINGTONE, PreferenceHelper.SOUND_TYPE_TTS)
+    if (showSpeechDialog) {
         SingleChoiceDialog(
-            title = stringResource(R.string.sound_mode_dialog_title),
-            options = listOf(
-                stringResource(R.string.sound_mode_ringtone),
-                stringResource(R.string.sound_mode_tts),
-            ),
-            selectedIndex = types.indexOf(uiState.soundType).coerceAtLeast(0),
+            title = stringResource(R.string.speech_stream_title),
+            options = SpeechStreams.map { stringResource(speechStreamLabel(it)) },
+            selectedIndex = SpeechStreams.indexOf(uiState.speechStream).coerceAtLeast(0),
             onSelected = {
-                onSoundTypeChange(types[it])
-                showSoundTypeDialog = false
+                onSpeechStreamChange(SpeechStreams[it])
+                showSpeechDialog = false
             },
-            onDismiss = { showSoundTypeDialog = false },
+            onDismiss = { showSpeechDialog = false },
         )
     }
+
+    if (showSnoozeDialog) {
+        val choices = PreferenceHelper.SNOOZE_CHOICES
+        SingleChoiceDialog(
+            title = stringResource(R.string.snooze_title),
+            options = choices.map { stringResource(R.string.snooze_minutes, it) },
+            selectedIndex = choices.indexOf(uiState.snoozeMinutes).coerceAtLeast(0),
+            onSelected = {
+                onSnoozeChange(choices[it])
+                showSnoozeDialog = false
+            },
+            onDismiss = { showSnoozeDialog = false },
+        )
+    }
+
+}
+
+@Composable
+private fun rememberToneTitle(context: Context, uri: Uri?): String? =
+    // Resolving the title queries a content provider, so it happens once per ringtone rather
+    // than on every recomposition of the screen.
+    remember(uri) {
+        uri?.let {
+            runCatching { RingtoneManager.getRingtone(context, it)?.getTitle(context) }.getOrNull()
+        }
+    }
+
+private val SpeechStreams = listOf(
+    PreferenceHelper.STREAM_NOTIFICATION,
+    PreferenceHelper.STREAM_MEDIA,
+    PreferenceHelper.STREAM_ALARM,
+)
+
+private fun speechStreamLabel(stream: String): Int = when (stream) {
+    PreferenceHelper.STREAM_MEDIA -> R.string.speech_stream_media
+    PreferenceHelper.STREAM_ALARM -> R.string.speech_stream_alarm
+    else -> R.string.speech_stream_notification
 }
 
 private val VibrationPatterns = listOf(
@@ -476,10 +512,12 @@ private fun SettingsScreenPreview() {
             uiState = SettingsUiState(),
             onBack = {},
             onShowRingtonePicker = {},
-            onSoundEnabledChange = {},
-            onSoundTypeChange = {},
+            onShowAlarmTonePicker = {},
+            onSpeechStreamChange = {},
+            onSnoozeChange = {},
             onVibrationEnabledChange = {},
             onVibrationPatternChange = {},
+            onCompactListChange = {},
             onFixExactAlarms = {},
             onFixBattery = {},
             onOpenDkma = {},

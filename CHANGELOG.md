@@ -4,6 +4,67 @@ All notable changes to reReminder are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0] — 2026-10-10
+
+More ways to repeat, a real alarm mode, sounds that finally do what you pick, and a core
+rebuilt to fire reliably.
+
+### Added
+
+- **Custom repeat (#7).** Besides minutes and hours, a reminder can repeat every N days,
+  weeks or months. Weekly reminders can pick their weekdays ("every 2 weeks on Mon and
+  Thu"), monthly ones their days of the month ("every 3 months on the 15th"; the 29th–31st
+  fall on the last day of shorter months). Calendar repeats fire at the start time's time of
+  day and stay there across daylight saving changes.
+- **Several time windows per reminder (#7),** e.g. Mon–Fri 09:00–17:00 plus Sat 10:00–12:00.
+- **Early alerts (#11).** Up to three heads-ups before each event (5 min to 1 day ahead).
+  The notification says what is coming and when ("In 10 min · 10:30").
+- **Alarm mode (#10).** Per reminder, choose Notification or Alarm. An alarm covers the lock
+  screen and keeps ringing and vibrating until you dismiss or snooze it, and goes quiet
+  after five minutes with a "missed" note. The snooze length is set in Settings.
+- **A sound per reminder (#13):** the default, a tone of its own, the message read aloud, or
+  silence — with a preview. Whether a reminder speaks is now its own choice rather than one
+  app-wide setting.
+- **Sound, vibrate or mute in one tap:** a button above the list switches every reminder,
+  alarms included, between sounding as set, vibrating only and staying silent.
+- **Speak at the volume of (#9):** spoken reminders can follow the notification, media or
+  alarm volume. New installs use notification volume; existing users keep media.
+- **List tools (#8):** swipe a reminder away to delete it (with Undo), sort by next alert or
+  drag your own order, and an optional compact list that shows only the name and when it is
+  next due.
+- A quiet "missed" notification when an alarm or a dated reminder could not ring because the
+  phone was off.
+
+### Changed
+
+- **The sound you pick is the sound you hear (#12).** Android fixes a notification
+  channel's sound when the channel is created, so reReminder now keeps one channel per sound
+  and switches channels when you pick another one; unused channels are removed again. Changes
+  take effect immediately, a reminder set to silent really is silent, and sound and vibration
+  no longer play twice. (Playing the sound from the app itself is not an option: Android 17
+  mutes audio that background apps start.)
+- "Ringtone" in Settings is now "Notification sound", with a separate "Alarm sound"; these are
+  what a reminder's "Default" sound plays. The global "Sound enabled" and "Sound or
+  text-to-speech" settings are gone — reminders that relied on them were switched to speech or
+  silence on update, so nothing sounds different.
+- `{next}` names the next event and includes the day when it isn't today (#11).
+- Alerts respect Do Not Disturb, silent and vibrate mode (Android itself plays the tone), and
+  stay quiet when notifications are blocked.
+- Spoken reminders duck other audio instead of talking over it.
+
+### Fixed
+
+- Reminders without a start date no longer drift later with every late alarm; every reminder
+  now runs on a fixed grid.
+- Daily reminders kept their 09:00 across daylight saving changes only by luck; calendar
+  repeats now compute in local time.
+- Reminders fire after a reboot even before the phone is unlocked (data now lives in
+  device-protected storage).
+- Allowing exact alarms again re-arms reminders straight away instead of on the next app start.
+- Sound and speech can no longer be cut off mid-way when Android reclaims the app, and two
+  reminders firing together no longer silence each other.
+- A damaged reminders file is kept aside instead of being replaced by an empty list.
+
 ## [3.0] — 2026-07-27
 
 The single-reminder limit is gone. reReminder now runs as many independent loops as you

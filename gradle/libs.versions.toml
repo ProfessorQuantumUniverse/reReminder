@@ -15,6 +15,7 @@ navigation = "2.10.1"
 composeBom = "2026.09.00"
 material = "1.14.0"
 kotlinxSerialization = "1.11.0"
+reorderable = "2.5.1"
 
 # Testing
 junit = "4.13.2"
@@ -47,6 +48,9 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+
+# Drag-to-reorder for the reminder list (Apache-2.0).
+reorderable = { group = "sh.calvin.reorderable", name = "reorderable", version.ref = "reorderable" }
 
 kotlin-gradle-plugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-plugin", version.ref = "kotlin" }
 

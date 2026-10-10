@@ -17,7 +17,6 @@
     <string name="reminder_default_name">Reminder</string>
     <string name="next_in">in %1$s</string>
     <string name="paused">Paused</string>
-    <string name="waiting_for_window">Starts %1$s</string>
     <string name="not_started_yet">Not started</string>
     <string name="starts_on">Starts %1$s · in %2$s</string>
 
@@ -50,16 +49,15 @@
     <string name="editor_message_placeholder">e.g. Time to stretch your legs</string>
     <string name="editor_message_hint">Tap a chip to insert a value that is filled in when the reminder fires.</string>
     <string name="editor_preview">Preview: %1$s</string>
-    <string name="editor_repeat_every">Repeat every</string>
     <string name="editor_insert_variable">Insert a value</string>
     <string name="editor_schedule_always">Runs at any time</string>
     <string name="editor_all_day">All day</string>
     <string name="editor_from">From</string>
     <string name="editor_until">Until</string>
     <string name="editor_colour_selected">Color %1$d selected</string>
-    <string name="editor_sound">Play sound</string>
+    <string name="editor_sound">Sound</string>
     <string name="editor_vibration">Vibrate</string>
-    <string name="editor_alert_hint">The sound and vibration style itself is set in Settings and applies to every timer.</string>
+    <string name="editor_alert_hint">Early alerts arrive as notifications. What \"Default\" sounds like is set in Settings.</string>
     <string name="editor_delete">Delete timer</string>
     <string name="editor_delete_confirm_title">Delete this timer?</string>
     <string name="editor_delete_confirm_text">"%1$s" will be removed and stop reminding you.</string>
@@ -73,11 +71,10 @@
     <string name="variable_day">Weekday</string>
     <string name="variable_name">Reminder name</string>
     <string name="variable_interval">Interval</string>
-    <string name="variable_next">Next reminder</string>
+    <string name="variable_next">Next event</string>
 
     <!-- Interval picker -->
     <string name="interval_dialog_title">Set reminder interval</string>
-    <string name="interval_dialog_hint">Flick a wheel, or tap a preset below.</string>
 
     <!-- Start date and time -->
     <string name="start_dialog_title">First reminder</string>
@@ -100,19 +97,14 @@
     <!-- Notification content -->
     <string name="reminder_notification_text">Your message</string>
     <string name="notification_channel_name">Reminders</string>
-    <string name="notification_channel_description">Channel for recurring reminder notifications</string>
+    <string name="notification_channel_description">Reminder notifications. reReminder plays each reminder\'s own sound, so this channel stays silent.</string>
 
     <!-- Settings -->
     <string name="settings_group_alerts">Alerts</string>
-    <string name="sound_enabled_label">Sound enabled</string>
-    <string name="sound_mode_title">Sound or text-to-speech</string>
-    <string name="sound_mode_dialog_title">Sound or text-to-speech</string>
-    <string name="sound_mode_ringtone">Sound</string>
-    <string name="sound_mode_tts">Text-to-speech</string>
-    <string name="ringtone_title">Ringtone</string>
-    <string name="ringtone_picker_title">Select notification ringtone</string>
+    <string name="ringtone_title">Notification sound</string>
+    <string name="ringtone_picker_title">Select a sound</string>
     <string name="default_label">Default</string>
-    <string name="settings_alerts_hint">These apply to every reminder. Individual reminders can still mute their own sound or vibration.</string>
+    <string name="settings_alerts_hint">\"Default\" in a reminder plays these sounds. Each reminder picks its own sound or speech in its editor, and the speaker button above the list mutes everything at once.</string>
 
     <string name="vibration_enabled_label">Vibration</string>
     <string name="vibration_pattern_title">Vibration pattern</string>
@@ -174,4 +166,126 @@
 
     <!-- Permissions -->
     <string name="permission_required_toast">Notification permission is required for the app to work properly.</string>
+
+    <!-- 4.0: repeat rules (#7) -->
+    <string name="editor_repeat">Repeat</string>
+    <string name="repeat_unit_time">Hours</string>
+    <string name="repeat_unit_days">Days</string>
+    <string name="repeat_unit_weeks">Weeks</string>
+    <string name="repeat_unit_months">Months</string>
+    <plurals name="repeat_every_days">
+        <item quantity="one">Every day</item>
+        <item quantity="other">Every %1$d days</item>
+    </plurals>
+    <plurals name="repeat_every_weeks">
+        <item quantity="one">Every week</item>
+        <item quantity="other">Every %1$d weeks</item>
+    </plurals>
+    <plurals name="repeat_every_months">
+        <item quantity="one">Every month</item>
+        <item quantity="other">Every %1$d months</item>
+    </plurals>
+    <plurals name="unit_days">
+        <item quantity="one">day</item>
+        <item quantity="other">days</item>
+    </plurals>
+    <plurals name="unit_weeks">
+        <item quantity="one">week</item>
+        <item quantity="other">weeks</item>
+    </plurals>
+    <plurals name="unit_months">
+        <item quantity="one">month</item>
+        <item quantity="other">months</item>
+    </plurals>
+    <plurals name="duration_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <plurals name="duration_weeks">
+        <item quantity="one">%1$d week</item>
+        <item quantity="other">%1$d weeks</item>
+    </plurals>
+    <plurals name="duration_months">
+        <item quantity="one">%1$d month</item>
+        <item quantity="other">%1$d months</item>
+    </plurals>
+    <string name="repeat_on_days">%1$s on %2$s</string>
+    <string name="repeat_on_month_days">%1$s on the %2$s</string>
+    <string name="repeat_month_end_hint">In shorter months, days past the end fall on the last day.</string>
+    <string name="start_required">Pick a date</string>
+    <string name="schedule_at_time">at %1$s</string>
+    <string name="schedule_needs_start">Needs a start date</string>
+    <plurals name="schedule_window_count">
+        <item quantity="one">%1$d time window</item>
+        <item quantity="other">%1$d time windows</item>
+    </plurals>
+    <string name="editor_add_window">Add time window</string>
+    <string name="editor_remove_window">Remove time window</string>
+    <string name="window_dialog_title">Time window</string>
+
+    <!-- 4.0: early alerts (#11) -->
+    <string name="early_alerts_title">Early alerts</string>
+    <string name="early_alerts_none">None</string>
+    <string name="early_alerts_before">%1$s before</string>
+    <string name="early_alert_chip">%1$s before</string>
+    <string name="early_alerts_hint">A heads-up before each event, as a notification. Up to three.</string>
+    <string name="early_alerts_interval_too_short">The interval is too short for an early alert.</string>
+    <string name="notification_early">In %1$s · %2$s</string>
+    <string name="next_at">Next: %1$s</string>
+    <string name="moment_day_time">%1$s %2$s</string>
+
+    <!-- 4.0: alert style and sound (#10, #12, #13, #9) -->
+    <string name="editor_alert_style">Alert as</string>
+    <string name="alert_style_notification">Notification</string>
+    <string name="alert_style_alarm">Alarm</string>
+    <string name="editor_alarm_hint">An alarm fills the screen and keeps ringing until you dismiss or snooze it. Early alerts still arrive as notifications.</string>
+    <string name="alarm_full_screen_needed">Android needs your OK before an alarm may cover the lock screen.</string>
+    <string name="alarm_full_screen_allow">Allow</string>
+    <string name="sound_dialog_title">Sound</string>
+    <string name="sound_default_option">Default</string>
+    <string name="sound_default_supporting">Notification sound from Settings</string>
+    <string name="sound_default_supporting_alarm">Alarm sound from Settings</string>
+    <string name="sound_tone">Own sound</string>
+    <string name="sound_tone_choose">Tap to choose</string>
+    <string name="sound_tone_change">Change</string>
+    <string name="sound_speak">Speak the message</string>
+    <string name="sound_speak_supporting">Reads the name and text aloud</string>
+    <string name="sound_silent">Silent</string>
+    <string name="sound_preview">Preview</string>
+    <string name="sound_preview_stop">Stop</string>
+    <string name="sound_preview_phrase">This is how your reminder will sound.</string>
+    <string name="alarm_tone_title">Alarm sound</string>
+    <string name="snooze_title">Snooze length</string>
+    <string name="snooze_minutes">%1$d min</string>
+    <string name="speech_stream_title">Speak at the volume of</string>
+    <string name="speech_stream_notification">Notifications</string>
+    <string name="speech_stream_media">Media</string>
+    <string name="speech_stream_alarm">Alarms</string>
+    <string name="alarm_ringing">Ringing</string>
+    <string name="alarm_dismiss">Dismiss</string>
+    <string name="alarm_snooze">Snooze</string>
+    <string name="alarm_snooze_minutes">Snooze %1$d min</string>
+    <string name="channel_alarms_name">Alarms</string>
+    <string name="channel_alarms_description">Alarm-style reminders that ring until you answer them</string>
+    <string name="channel_missed_name">Missed reminders</string>
+    <string name="channel_missed_description">A quiet note when an alarm or dated reminder could not ring</string>
+    <string name="channel_sound_name">Reminders · %1$s</string>
+    <string name="channel_sound_vibrate_name">Reminders · %1$s · vibrate</string>
+    <string name="channel_vibrate_only_name">Reminders · vibrate only</string>
+    <string name="channel_sound_description">Reminders that use this sound. reReminder creates one such channel per sound you pick and removes it when no reminder uses it any more.</string>
+    <string name="notification_missed_title">Missed: %1$s</string>
+    <string name="notification_missed_text">Was due %1$s</string>
+
+    <!-- 4.0: list (#8) -->
+    <string name="alert_mode_sound">Sound on</string>
+    <string name="alert_mode_vibrate">Vibrate only</string>
+    <string name="alert_mode_mute">All reminders muted</string>
+    <string name="sort_title">Sort</string>
+    <string name="sort_custom">Custom order (hold to drag)</string>
+    <string name="sort_next">Next alert first</string>
+    <string name="list_deleted">“%1$s” deleted</string>
+    <string name="action_undo">Undo</string>
+    <string name="settings_group_display">Display</string>
+    <string name="compact_list_title">Compact list</string>
+    <string name="compact_list_summary">Only the name and when it is next due</string>
 </resources>

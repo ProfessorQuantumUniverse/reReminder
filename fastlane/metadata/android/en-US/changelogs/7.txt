@@ -1,0 +1,11 @@
+reReminder 4.0
+
+- Repeat every N days, weeks or months, on chosen days
+- Several time windows per reminder
+- Early alerts before each event
+- Alarm mode: full screen, rings until dismissed or snoozed
+- Sound or speech per reminder; the chosen sound is the one you hear
+- One-tap sound / vibrate / mute
+- Speak at notification, media or alarm volume
+- Swipe to delete with Undo, sorting, reordering, compact list
+- More reliable: fires after reboot before unlock, no drift, respects Do Not Disturb

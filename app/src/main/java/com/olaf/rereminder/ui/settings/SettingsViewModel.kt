@@ -13,10 +13,12 @@ import kotlinx.coroutines.flow.update
 /** App-wide alert settings; per-timer options live in the timer editor. */
 data class SettingsUiState(
     val ringtone: Uri? = null,
-    val soundEnabled: Boolean = true,
-    val soundType: String = PreferenceHelper.SOUND_TYPE_RINGTONE,
+    val alarmTone: Uri? = null,
+    val speechStream: String = PreferenceHelper.STREAM_NOTIFICATION,
+    val snoozeMinutes: Int = PreferenceHelper.DEFAULT_SNOOZE_MINUTES,
     val vibrationEnabled: Boolean = true,
     val vibrationPattern: Int = 1,
+    val compactList: Boolean = false,
     /** System-level conditions that decide whether reminders actually arrive on time. */
     val exactAlarmsAllowed: Boolean = true,
     val batteryUnrestricted: Boolean = true,
@@ -37,10 +39,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val status = Reliability.status(getApplication())
         return SettingsUiState(
             ringtone = preferences.getSelectedRingtone(),
-            soundEnabled = preferences.isSoundEnabled(),
-            soundType = preferences.getNotificationSoundType(),
+            alarmTone = preferences.getAlarmTone(),
+            speechStream = preferences.getSpeechStream(),
+            snoozeMinutes = preferences.getSnoozeMinutes(),
             vibrationEnabled = preferences.isVibrationEnabled(),
             vibrationPattern = preferences.getVibrationPattern(),
+            compactList = preferences.isCompactList(),
             exactAlarmsAllowed = status.exactAlarmsAllowed,
             batteryUnrestricted = status.batteryUnrestricted,
             vendorName = status.vendorName,
@@ -59,21 +63,26 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun getSelectedRingtone(): Uri? = _uiState.value.ringtone
-
     fun setSelectedRingtone(uri: Uri?) {
         preferences.setSelectedRingtone(uri)
         _uiState.update { it.copy(ringtone = uri) }
     }
 
-    fun setSoundEnabled(enabled: Boolean) {
-        preferences.setSoundEnabled(enabled)
-        _uiState.update { it.copy(soundEnabled = enabled) }
+    fun setAlarmTone(uri: Uri?) {
+        preferences.setAlarmTone(uri)
+        _uiState.update { it.copy(alarmTone = uri) }
     }
 
-    fun setNotificationSoundType(type: String) {
-        preferences.setNotificationSoundType(type)
-        _uiState.update { it.copy(soundType = type) }
+
+
+    fun setSpeechStream(stream: String) {
+        preferences.setSpeechStream(stream)
+        _uiState.update { it.copy(speechStream = stream) }
+    }
+
+    fun setSnoozeMinutes(minutes: Int) {
+        preferences.setSnoozeMinutes(minutes)
+        _uiState.update { it.copy(snoozeMinutes = minutes) }
     }
 
     fun setVibrationEnabled(enabled: Boolean) {
@@ -84,5 +93,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setVibrationPattern(pattern: Int) {
         preferences.setVibrationPattern(pattern)
         _uiState.update { it.copy(vibrationPattern = pattern) }
+    }
+
+    fun setCompactList(compact: Boolean) {
+        preferences.setCompactList(compact)
+        _uiState.update { it.copy(compactList = compact) }
     }
 }

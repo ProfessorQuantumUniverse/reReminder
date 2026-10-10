@@ -52,20 +52,29 @@ Since **3.0** you are no longer limited to a single reminder: run as many indepe
 *   **As many loops as you need:** "Take a walk" every 50 minutes and "Sit or stand" every 20 minutes run side by side, each counting down independently.
 *   **Colour coded:** Give every reminder its own accent so the list stays readable at a glance.
 *   **Master switch:** Pause everything with one toggle, and see which reminder is up next and when, without losing each reminder's individual state.
+*   **Your list, your way:** Swipe to delete (with Undo), sort by next alert or drag your own order, and switch to a compact list.
+
+### Repeat the way you need
+*   **Minutes to months:** Every 20 minutes, every 2 days, every 2 weeks on Mon and Thu, or every 3 months on the 15th.
+*   **Early alerts:** Get a heads-up 10 and 5 minutes (or up to a day) before each event.
+*   **Start when you want:** Pin the first alert to a date and time, or simply start right away.
 
 ### Schedules
-*   **Pick your days:** Run a reminder only Mon–Fri, only on weekends, or on any combination of weekdays.
-*   **Pick your hours:** Restrict a reminder to a time window like 08:00–17:00. Windows may cross midnight (22:00–06:00) for night shifts.
+*   **Pick your days and hours:** Run an interval reminder only Mon–Fri 08:00–17:00, only on weekends, or both: a reminder can have several time windows. Windows may cross midnight (22:00–06:00) for night shifts.
 *   **Off by default:** A new reminder simply runs at any time. The schedule is one switch away when you want it, and invisible when you don't.
 
-### Notifications
+### Alerts
+*   **Notification or alarm:** A gentle notification, or a full-screen alarm that keeps ringing until you dismiss or snooze it.
+*   **A sound per reminder:** The default, a tone of its own, the message read aloud (text-to-speech), or silence.
+*   **Sound, vibrate, mute:** One tap above the list switches every reminder between sounding, vibrating only and silence.
+*   **Speak at the right volume:** Spoken reminders can follow the notification, media or alarm volume, so a muted video doesn't swallow them.
 *   **Dynamic text:** Insert values that are filled in the moment the reminder fires, `{time}`, `{date}`, `{day}`, `{name}`, `{interval}` and `{next}`, with a live preview while you type.
-*   **Text-to-Speech (TTS):** Let the app *speak* your message so you don't have to look at your phone. It follows your device language.
-*   **Haptic Control:** Fully customizable vibration patterns.
-*   **Sound Selection:** Choose from system notification sounds, or mute sound and vibration per reminder.
+*   **Haptic Control:** Customizable vibration patterns.
 
 ### Built to actually fire
-*   **Exact alarms** that survive Doze, reboots, app updates, and clock or timezone changes.
+*   **Exact alarms** that survive Doze, reboots (even before the phone is unlocked), app updates, and clock or timezone changes.
+*   **No drift:** Every reminder runs on a fixed grid, and daily reminders stay at their time across daylight saving changes.
+*   **Respects your phone:** Quiet during Do Not Disturb, vibration only on vibrate. Alarms are the exception, as they should be.
 *   **Reliability check** in the settings: see at a glance whether exact alarms are permitted and whether battery optimisation is holding your reminders back, and jump straight to the right system screen to fix it.
 *   **Self-healing loop:** the next alarm is armed before the notification is even posted, so a single failure can never break the chain.
 
@@ -129,9 +138,9 @@ cd reReminder
 | Build | Gradle 9.6 · Android Gradle Plugin 9.3 |
 | SDK | min 26 (Android 8) · target 37 |
 | JDK | 17 |
-| Storage | SharedPreferences + kotlinx.serialization, no database, no network |
+| Storage | A JSON file (kotlinx.serialization) in device-protected storage, no database, no network |
 
-Reminders are scheduled with `AlarmManager`; there is no foreground service and no background polling.
+Reminders are scheduled with exact `AlarmManager` alarms; there is no background polling. Only a ringing alarm or a reminder being read aloud runs as a short-lived foreground service.
 
 ## 🤝 Contributing
 

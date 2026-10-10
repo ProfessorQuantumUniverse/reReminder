@@ -1,166 +1,210 @@
 package com.olaf.rereminder.data
 
 import kotlinx.serialization.Serializable
-import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 
+/** What a [Repeat] counts in. */
+@Serializable
+enum class RepeatUnit {
+    /** Minutes and hours: the classic interval timer, optionally inside time windows. */
+    TIME,
+    DAYS,
+    WEEKS,
+    MONTHS,
+}
+
 /**
- * One recurring timer.
+ * How often a reminder comes round.
  *
- * A reminder fires every [intervalMinutes], but only inside its schedule: on the weekdays in
- * [days] and between [startMinute] and [endMinute] (minutes from local midnight). A window where
- * [startMinute] >= [endMinute] wraps past midnight, so 22:00–06:00 is a valid night schedule.
+ * [RepeatUnit.TIME] counts minutes ("every 1 h 30 min"). The calendar units count days, weeks or
+ * months and always fire at the start moment's time of day, in local time — so "every day at
+ * 09:00" stays at 09:00 across daylight saving changes.
+ */
+@Serializable
+data class Repeat(
+    val unit: RepeatUnit = RepeatUnit.TIME,
+    /** Minutes for [RepeatUnit.TIME], otherwise the number of days, weeks or months. */
+    val every: Int = 60,
+    /** [RepeatUnit.WEEKS] only: ISO weekdays to fire on. Empty means the start moment's weekday. */
+    val weekdays: Set<Int> = emptySet(),
+    /** [RepeatUnit.MONTHS] only: days of the month. 29–31 fall back to the last day of shorter months. */
+    val monthDays: Set<Int> = emptySet(),
+) {
+    val isCalendar: Boolean
+        get() = unit != RepeatUnit.TIME
+
+    /**
+     * The shortest gap there can be between two events, in minutes. An early alert must be
+     * shorter than this, or it would land before the previous event.
+     */
+    val shortestGapMinutes: Long
+        get() {
+            val n = every.coerceAtLeast(1).toLong()
+            return when (unit) {
+                RepeatUnit.TIME -> n
+                RepeatUnit.DAYS -> n * DAY_MINUTES
+                RepeatUnit.WEEKS -> {
+                    val days = weekdays.sorted()
+                    if (days.size <= 1) {
+                        n * 7 * DAY_MINUTES
+                    } else {
+                        val gaps = days.zipWithNext { a, b -> (b - a).toLong() } +
+                            (n * 7 - (days.last() - days.first()))
+                        gaps.min() * DAY_MINUTES
+                    }
+                }
+
+                RepeatUnit.MONTHS -> {
+                    val days = monthDays.sorted()
+                    if (days.size <= 1) {
+                        n * SHORTEST_MONTH_DAYS * DAY_MINUTES
+                    } else {
+                        // Day 31 can collapse onto day 30 in a short month, so count conservatively.
+                        val gaps = days.zipWithNext { a, b -> (b - a).toLong() } +
+                            (n * SHORTEST_MONTH_DAYS - (days.last() - days.first()))
+                        (gaps.min() - 1).coerceAtLeast(1) * DAY_MINUTES
+                    }
+                }
+            }
+        }
+
+    private companion object {
+        const val DAY_MINUTES = 24L * 60
+        const val SHORTEST_MONTH_DAYS = 28L
+    }
+}
+
+/**
+ * One slot in which an interval reminder may fire: on [days], between [startMinute] and
+ * [endMinute] (minutes from local midnight). A window where [startMinute] >= [endMinute] wraps
+ * past midnight, so 22:00–06:00 is a valid night window.
+ */
+@Serializable
+data class TimeWindow(
+    /** ISO weekday numbers, 1 = Monday … 7 = Sunday. */
+    val days: Set<Int> = Reminder.WEEKDAYS,
+    val startMinute: Int = 9 * 60,
+    val endMinute: Int = 17 * 60,
+) {
+    val isAllDay: Boolean
+        get() = startMinute == 0 && endMinute >= Reminder.MINUTES_PER_DAY
+
+    val isOvernight: Boolean
+        get() = !isAllDay && startMinute >= endMinute
+}
+
+@Serializable
+enum class AlertStyle { NOTIFICATION, ALARM }
+
+@Serializable
+enum class SoundMode {
+    /** Whatever Settings say for this alert style. */
+    DEFAULT,
+    SILENT,
+    /** [SoundChoice.toneUri] */
+    TONE,
+    /** Text-to-speech reads the name and message. */
+    SPEAK,
+}
+
+@Serializable
+data class SoundChoice(
+    val mode: SoundMode = SoundMode.DEFAULT,
+    val toneUri: String? = null,
+)
+
+/**
+ * One recurring reminder.
  *
- * [startAtMillis] pins the moment the loop begins. Until then the reminder stays silent, and its
- * very first alert lands on that exact date and time rather than one interval from now.
+ * It fires on its [repeat] rule — for interval reminders only inside [windows] — with optional
+ * [earlyAlerts] ahead of each event. The math lives in `Schedule.kt`.
+ *
+ * Every reminder has a fixed grid it fires on, anchored to [startAtMillis] when the user pinned a
+ * start moment and to [anchorMillis] (the moment it was switched on) otherwise. Counting from the
+ * anchor rather than from whenever the last alarm happened to arrive is what keeps a reminder
+ * from drifting later and later.
  */
 @Serializable
 data class Reminder(
     val id: Int,
     val name: String = "",
     val message: String = "",
-    val intervalMinutes: Int = 60,
     val enabled: Boolean = true,
-    /** ISO weekday numbers, 1 = Monday … 7 = Sunday. */
-    val days: Set<Int> = ALL_DAYS,
-    val startMinute: Int = 0,
-    val endMinute: Int = MINUTES_PER_DAY,
     val colorIndex: Int = 0,
-    val soundEnabled: Boolean = true,
-    val vibrationEnabled: Boolean = true,
-    /** Epoch millis of the first alert, 0 when the timer starts right away. */
+    val repeat: Repeat = Repeat(),
+    /** Interval reminders only. Empty means "any time, any day". */
+    val windows: List<TimeWindow> = emptyList(),
+    /** Epoch millis of the first event the user pinned, 0 when the timer starts right away. */
     val startAtMillis: Long = 0L,
-    /** Epoch millis of the scheduled alarm, 0 when not scheduled. */
+    /** When the timer was last switched on; the grid's origin when no start moment is pinned. */
+    val anchorMillis: Long = 0L,
+    /** Minutes before each event to alert as well, e.g. [10, 5]. */
+    val earlyAlerts: List<Int> = emptyList(),
+    val alertStyle: AlertStyle = AlertStyle.NOTIFICATION,
+    val sound: SoundChoice = SoundChoice(),
+    val vibrationEnabled: Boolean = true,
+    /** Position in the list when sorted by hand. */
+    val sortIndex: Int = 0,
+    /** Epoch millis of the armed alert, 0 when not scheduled. */
     val nextTriggerAt: Long = 0L,
+    /** The event the armed alert belongs to; differs from [nextTriggerAt] for early alerts. */
+    val nextEventAt: Long = 0L,
+    /** A snoozed alarm rings again at this moment; 0 when nothing is snoozed. */
+    val snoozeUntil: Long = 0L,
 ) {
-    /** True when the schedule covers the whole day (no time restriction). */
-    val isAllDay: Boolean
-        get() = startMinute == 0 && endMinute >= MINUTES_PER_DAY
-
-    val isEveryDay: Boolean
-        get() = days.size == 7
-
-    /** True when the user pinned an explicit first-alert date and time. */
+    /** True when the user pinned an explicit first-event date and time. */
     val hasStartMoment: Boolean
         get() = startAtMillis > 0L
 
-    /** A window that wraps past midnight, e.g. 22:00 → 06:00. */
-    private val isOvernight: Boolean
-        get() = !isAllDay && startMinute >= endMinute
+    /**
+     * When a reminder that has not begun yet will first fire: the first event the schedule
+     * produces, which is later than the start moment when that falls outside the chosen days.
+     */
+    val firstEventAt: Long
+        get() = if (nextEventAt > 0L) nextEventAt else startAtMillis
 
-    val intervalMillis: Long
-        get() = intervalMinutes * 60_000L
+    /** The origin of this reminder's grid. */
+    val effectiveAnchor: Long
+        get() = if (hasStartMoment) startAtMillis else anchorMillis
+
+    /** Interval length for [RepeatUnit.TIME]; the editor and list show it as "every …". */
+    val intervalMinutes: Int
+        get() = if (repeat.unit == RepeatUnit.TIME) repeat.every else 0
+
+    /** Roughly how long one cycle lasts, for the progress ring. */
+    val cycleMillis: Long
+        get() = repeat.shortestGapMinutes * 60_000L
+
+    /** Windows that can actually match; only interval reminders have any. */
+    val activeWindows: List<TimeWindow>
+        get() = if (repeat.isCalendar) emptyList() else windows.filter { it.days.isNotEmpty() }
 
     /** True while the start moment is still ahead, so the loop has not begun yet. */
     fun isPending(nowMillis: Long = System.currentTimeMillis()): Boolean =
         hasStartMoment && startAtMillis > nowMillis
 
-    /** Whether [epochMillis] falls inside an active slot of this reminder's schedule. */
-    fun isActiveAt(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): Boolean {
-        if (days.isEmpty()) return false
-        // Before the start moment nothing is active, however well the weekday window fits.
-        if (epochMillis < startAtMillis) return false
-
-        val dateTime = Instant.ofEpochMilli(epochMillis).atZone(zone)
-        val minuteOfDay = dateTime.hour * 60 + dateTime.minute
-        val today = dateTime.dayOfWeek.value
-
-        return when {
-            isAllDay -> today in days
-            isOvernight -> {
-                // Either the tail of a window that started today, or one that started yesterday.
-                val yesterday = dateTime.minusDays(1).dayOfWeek.value
-                (today in days && minuteOfDay >= startMinute) ||
-                    (yesterday in days && minuteOfDay < endMinute)
-            }
-
-            else -> today in days && minuteOfDay in startMinute until endMinute
+    /** Whether the reminder could ever fire with its current settings. */
+    val isSchedulable: Boolean
+        get() = when {
+            repeat.every <= 0 -> false
+            repeat.isCalendar -> hasStartMoment
+            windows.isEmpty() -> true
+            else -> activeWindows.isNotEmpty() && windows.all { it.days.isNotEmpty() }
         }
-    }
-
-    /**
-     * The next moment this reminder should fire after [fromMillis], or null when the schedule can
-     * never match (no weekdays selected). Normally that is simply `from + interval`; if that lands
-     * outside the schedule it snaps forward to the start of the next active window.
-     *
-     * While [startAtMillis] is still ahead the interval is ignored entirely — the first alert is
-     * the start moment itself, which is the whole point of pinning one.
-     */
-    fun nextTriggerAfter(fromMillis: Long, zone: ZoneId = ZoneId.systemDefault()): Long? {
-        if (days.isEmpty() || intervalMinutes <= 0) return null
-
-        if (startAtMillis > fromMillis) {
-            return if (isActiveAt(startAtMillis, zone)) {
-                startAtMillis
-            } else {
-                // The chosen moment falls outside the weekday/time window — wait for the window.
-                nextWindowStartAfter(startAtMillis, zone)
-            }
-        }
-
-        val candidate = nextCandidateAfter(fromMillis)
-        if (isActiveAt(candidate, zone)) return candidate
-        return nextWindowStartAfter(candidate, zone)
-    }
-
-    /**
-     * The next tick of the loop after [fromMillis].
-     *
-     * With a pinned start the ticks sit on a fixed grid anchored to it, rather than being counted
-     * from whenever the last one happened to fire. That difference is what makes "every day at
-     * 09:00" hold: measured from the last firing, a reminder missed while the phone was off would
-     * resume at whatever time the phone came back, and the couple of milliseconds each alarm runs
-     * late would pile up over months. Without a start moment there is no anchor to snap to, so
-     * the interval is simply counted from now as before.
-     */
-    private fun nextCandidateAfter(fromMillis: Long): Long {
-        if (!hasStartMoment) return fromMillis + intervalMillis
-
-        val elapsed = fromMillis - startAtMillis
-        val ticks = elapsed / intervalMillis + 1
-        return startAtMillis + ticks * intervalMillis
-    }
-
-    /**
-     * The first moment at or after [fromMillis] at which the reminder becomes active again.
-     * Used both for snapping a missed trigger forward and for scheduling a freshly enabled timer.
-     */
-    fun nextWindowStartAfter(fromMillis: Long, zone: ZoneId = ZoneId.systemDefault()): Long? {
-        if (days.isEmpty()) return null
-
-        // Never hand back a moment before the pinned start.
-        val earliest = maxOf(fromMillis, startAtMillis)
-        // A start moment can land in the middle of an open window — then the window is already
-        // open and the answer is that moment itself, not the next day's opening.
-        if (isActiveAt(earliest, zone)) return earliest
-
-        val from = Instant.ofEpochMilli(earliest).atZone(zone)
-        var date: LocalDate = from.toLocalDate()
-
-        // A window opens at most once per day, so eight days always covers a full week plus today.
-        repeat(DAYS_TO_SCAN) {
-            if (date.dayOfWeek.value in days) {
-                val startTime = if (isAllDay) LocalTime.MIDNIGHT else minuteToLocalTime(startMinute)
-                val start = date.atTime(startTime).atZone(zone).toInstant().toEpochMilli()
-                if (start >= earliest) return start
-            }
-            date = date.plusDays(1)
-        }
-        return null
-    }
-
-    fun dayOfWeekSet(): Set<DayOfWeek> = days.mapNotNull { runCatching { DayOfWeek.of(it) }.getOrNull() }.toSet()
 
     companion object {
         const val MINUTES_PER_DAY = 24 * 60
-        private const val DAYS_TO_SCAN = 8
 
         val ALL_DAYS: Set<Int> = (1..7).toSet()
         val WEEKDAYS: Set<Int> = (1..5).toSet()
+        val WEEKEND: Set<Int> = setOf(6, 7)
+
+        /** The most early alerts a reminder may carry, so a single event never turns into a barrage. */
+        const val MAX_EARLY_ALERTS = 3
 
         fun minuteToLocalTime(minuteOfDay: Int): LocalTime {
             val clamped = minuteOfDay.coerceIn(0, MINUTES_PER_DAY - 1)

@@ -1,9 +1,13 @@
 package com.olaf.rereminder.ui.format
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.olaf.rereminder.R
 import com.olaf.rereminder.data.Reminder
+import com.olaf.rereminder.data.Repeat
+import com.olaf.rereminder.data.RepeatUnit
+import com.olaf.rereminder.data.TimeWindow
 import java.text.DateFormat
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -109,18 +113,99 @@ fun daysLabel(days: Set<Int>): String = when {
 
 /** "Mon–Fri · 8:00–17:00". */
 @Composable
-fun scheduleSummary(reminder: Reminder): String {
-    val days = daysLabel(reminder.days)
-    if (reminder.days.isEmpty()) return days
+fun windowLabel(window: TimeWindow): String {
+    val days = daysLabel(window.days)
+    if (window.days.isEmpty()) return days
 
-    val window = if (reminder.isAllDay) {
+    val hours = if (window.isAllDay) {
         stringResource(R.string.schedule_all_day)
     } else {
         stringResource(
             R.string.schedule_between,
-            formatMinuteOfDay(reminder.startMinute),
-            formatMinuteOfDay(reminder.endMinute),
+            formatMinuteOfDay(window.startMinute),
+            formatMinuteOfDay(window.endMinute),
         )
     }
-    return stringResource(R.string.schedule_summary, days, window)
+    return stringResource(R.string.schedule_summary, days, hours)
+}
+
+/**
+ * When a reminder may fire, in one short line: its window ("Mon–Fri · 9:00–17:00"), the number of
+ * windows when there are several, the time of day for calendar repeats, or "Any time".
+ */
+@Composable
+fun scheduleSummary(reminder: Reminder): String = when {
+    reminder.repeat.isCalendar -> if (reminder.hasStartMoment) {
+        stringResource(R.string.schedule_at_time, formatClockTime(reminder.startAtMillis))
+    } else {
+        stringResource(R.string.schedule_needs_start)
+    }
+
+    reminder.windows.isEmpty() -> stringResource(R.string.editor_schedule_always)
+    reminder.windows.size == 1 -> windowLabel(reminder.windows.single())
+    else -> pluralStringResource(R.plurals.schedule_window_count, reminder.windows.size, reminder.windows.size)
+}
+
+/**
+ * The repeat rule as a sentence fragment: "Every 30 min", "Every day", "Every 2 weeks on Mon,
+ * Thu", "Every month on the 15th".
+ */
+@Composable
+fun repeatLabel(repeat: Repeat): String {
+    val n = repeat.every.coerceAtLeast(1)
+    return when (repeat.unit) {
+        RepeatUnit.TIME -> stringResource(R.string.every_interval, intervalLabel(n))
+        RepeatUnit.DAYS -> pluralStringResource(R.plurals.repeat_every_days, n, n)
+        RepeatUnit.WEEKS -> {
+            val base = pluralStringResource(R.plurals.repeat_every_weeks, n, n)
+            if (repeat.weekdays.isEmpty()) {
+                base
+            } else {
+                stringResource(R.string.repeat_on_days, base, daysLabel(repeat.weekdays))
+            }
+        }
+
+        RepeatUnit.MONTHS -> {
+            val base = pluralStringResource(R.plurals.repeat_every_months, n, n)
+            if (repeat.monthDays.isEmpty()) {
+                base
+            } else {
+                stringResource(
+                    R.string.repeat_on_month_days,
+                    base,
+                    repeat.monthDays.sorted().joinToString(", ") { ordinal(it) },
+                )
+            }
+        }
+    }
+}
+
+/** "1st", "22nd" in English; "1.", "22." elsewhere, which reads correctly in German. */
+fun ordinal(day: Int, locale: Locale = Locale.getDefault()): String {
+    if (locale.language != "en") return "$day."
+    val suffix = when {
+        day % 100 in 11..13 -> "th"
+        day % 10 == 1 -> "st"
+        day % 10 == 2 -> "nd"
+        day % 10 == 3 -> "rd"
+        else -> "th"
+    }
+    return "$day$suffix"
+}
+
+/** "10 min", "1 h", "1 day" — an early alert's offset. */
+@Composable
+fun offsetLabel(minutes: Int): String = when {
+    minutes >= 24 * 60 && minutes % (24 * 60) == 0 ->
+        pluralStringResource(R.plurals.duration_days, minutes / (24 * 60), minutes / (24 * 60))
+
+    else -> intervalLabel(minutes)
+}
+
+/** "None", "10 min before", "10 & 5 min before" style summary for the editor row. */
+@Composable
+fun earlyAlertsLabel(offsets: List<Int>): String {
+    if (offsets.isEmpty()) return stringResource(R.string.early_alerts_none)
+    val joined = offsets.sortedDescending().map { offsetLabel(it) }.joinToString(", ")
+    return stringResource(R.string.early_alerts_before, joined)
 }

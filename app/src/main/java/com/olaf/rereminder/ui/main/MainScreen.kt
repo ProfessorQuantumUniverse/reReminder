@@ -5,7 +5,10 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -38,35 +41,53 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.EventAvailable
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.NotificationsOff
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,24 +107,34 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.olaf.rereminder.R
+import com.olaf.rereminder.data.AlertStyle
 import com.olaf.rereminder.data.Reminder
+import com.olaf.rereminder.data.Repeat
+import com.olaf.rereminder.data.RepeatUnit
+import com.olaf.rereminder.data.displayName
 import com.olaf.rereminder.ui.components.CollapsingHeader
 import com.olaf.rereminder.ui.components.LiveText
 import com.olaf.rereminder.ui.components.MadeInEurope
 import com.olaf.rereminder.ui.components.rememberCollapseProgress
-import com.olaf.rereminder.ui.format.formatClockTime
 import com.olaf.rereminder.ui.format.formatCoarseCountdown
 import com.olaf.rereminder.ui.format.formatCountdown
 import com.olaf.rereminder.ui.format.formatStartMoment
-import com.olaf.rereminder.ui.format.intervalLabel
+import com.olaf.rereminder.ui.format.repeatLabel
 import com.olaf.rereminder.ui.format.scheduleSummary
 import com.olaf.rereminder.ui.theme.Motion
 import com.olaf.rereminder.ui.theme.ReReminderTheme
 import com.olaf.rereminder.ui.theme.accentColor
 import com.olaf.rereminder.ui.theme.pressScale
 import com.olaf.rereminder.ui.theme.tap
+import com.olaf.rereminder.ui.theme.tick
+import com.olaf.rereminder.utils.AlertMode
+import com.olaf.rereminder.utils.PreferenceHelper
 import com.olaf.rereminder.utils.ReliabilityIssue
 import com.olaf.rereminder.utils.ReliabilityStatus
+import com.olaf.rereminder.utils.TimeLabels
+import kotlinx.coroutines.launch
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
 fun MainRoute(
@@ -115,6 +146,12 @@ fun MainRoute(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val reliability by viewModel.reliabilityPrompt.collectAsStateWithLifecycle()
+    val undoGeneration by viewModel.undoGeneration.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val deletedMessage = stringResource(R.string.list_deleted)
+    val undoLabel = stringResource(R.string.action_undo)
+    val alertModeLabels = AlertMode.entries.associateWith { stringResource(alertModeMessage(it)) }
 
     // Re-arms anything that drifted while another screen or another app was in front, and
     // re-checks the reliability story in case the user just changed it in system settings.
@@ -125,11 +162,35 @@ fun MainRoute(
 
     MainScreen(
         uiState = uiState,
+        snackbarHostState = snackbarHostState,
+        undoGeneration = undoGeneration,
         onToggle = viewModel::setEnabled,
         onToggleMaster = viewModel::setMasterEnabled,
         onEdit = onEdit,
         onCreate = onCreate,
         onSettings = onSettings,
+        onSortMode = viewModel::setSortMode,
+        onCycleAlertMode = {
+            val mode = viewModel.cycleAlertMode()
+            scope.launch {
+                snackbarHostState.currentSnackbarData?.dismiss()
+                snackbarHostState.showSnackbar(alertModeLabels.getValue(mode), duration = SnackbarDuration.Short)
+            }
+        },
+        onReorder = viewModel::reorder,
+        onDelete = { id ->
+            val removed = viewModel.delete(id) ?: return@MainScreen
+            scope.launch {
+                snackbarHostState.currentSnackbarData?.dismiss()
+                val result = snackbarHostState.showSnackbar(
+                    message = deletedMessage.format(removed.displayName(context)),
+                    actionLabel = undoLabel,
+                    // Long enough to notice a slip of the thumb and take it back.
+                    duration = SnackbarDuration.Long,
+                )
+                if (result == SnackbarResult.ActionPerformed) viewModel.undoDelete()
+            }
+        },
     )
 
     reliability?.let { status ->
@@ -163,6 +224,12 @@ fun MainScreen(
     onEdit: (Int) -> Unit,
     onCreate: () -> Unit,
     onSettings: () -> Unit,
+    onSortMode: (String) -> Unit,
+    onCycleAlertMode: () -> Unit = {},
+    onReorder: (List<Int>) -> Unit,
+    onDelete: (Int) -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    undoGeneration: Int = 0,
 ) {
     val listState = rememberLazyListState()
     val collapseProgress by rememberCollapseProgress(listState)
@@ -173,13 +240,50 @@ fun MainScreen(
         derivedStateOf { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 80 }
     }
 
+    // While a card is being dragged the list shows this order instead of the stored one, so the
+    // card follows the finger at once; it is saved when the finger lifts.
+    var dragOrder by remember { mutableStateOf<List<Int>?>(null) }
+    var dragging by remember { mutableStateOf(false) }
+    val storedIds = uiState.rows.map { it.id }
+    LaunchedEffect(storedIds, dragging) {
+        // Hand back to the stored order once it has caught up with the drop.
+        if (!dragging && dragOrder != null && (dragOrder == storedIds || dragOrder!!.toSet() != storedIds.toSet())) {
+            dragOrder = null
+        }
+    }
+    val rows = dragOrder
+        ?.mapNotNull { id -> uiState.rows.firstOrNull { it.id == id } }
+        ?.takeIf { it.size == uiState.rows.size }
+        ?: uiState.rows
+
+    val reorderState = rememberReorderableLazyListState(listState) { from, to ->
+        val fromId = from.key as? Int ?: return@rememberReorderableLazyListState
+        val toId = to.key as? Int ?: return@rememberReorderableLazyListState
+        val order = (dragOrder ?: rows.map { it.id }).toMutableList()
+        val fromIndex = order.indexOf(fromId)
+        val toIndex = order.indexOf(toId)
+        if (fromIndex < 0 || toIndex < 0) return@rememberReorderableLazyListState
+        order.add(toIndex, order.removeAt(fromIndex))
+        dragOrder = order
+        view.tick()
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CollapsingHeader(
                 title = stringResource(R.string.app_name),
                 progress = collapseProgress,
                 actions = {
+                    AlertModeButton(mode = uiState.alertMode, onClick = onCycleAlertMode)
+                    AnimatedVisibility(
+                        visible = uiState.rows.size > 1,
+                        enter = scaleIn(Motion.expressive()) + fadeIn(),
+                        exit = scaleOut(Motion.snappy()) + fadeOut(),
+                    ) {
+                        SortMenu(mode = uiState.sortMode, onSortMode = onSortMode)
+                    }
                     IconButton(onClick = { view.tap(); onSettings() }) {
                         Icon(
                             Icons.Rounded.Settings,
@@ -230,7 +334,7 @@ fun MainScreen(
                         start = 20.dp,
                         end = 20.dp,
                     ),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (uiState.compact) 8.dp else 12.dp),
                 ) {
                     item(key = "master") {
                         MasterCard(
@@ -241,23 +345,194 @@ fun MainScreen(
                                 .animateItem(),
                         )
                     }
-                    items(uiState.rows, key = { it.id }) { row ->
-                        ReminderCard(
-                            row = row,
-                            masterEnabled = uiState.masterEnabled,
-                            onToggle = { enabled -> onToggle(row.id, enabled) },
-                            onClick = { onEdit(row.id) },
-                            // Adding, deleting or reordering a timer slides the rest into place.
-                            modifier = Modifier.animateItem(
-                                fadeInSpec = Motion.fade(),
-                                placementSpec = Motion.spatial(),
-                                fadeOutSpec = Motion.fade(),
-                            ),
-                        )
+                    items(rows, key = { it.id }) { row ->
+                        ReorderableItem(reorderState, key = row.id) { isDragging ->
+                            // A lifted card rises a little above the rest.
+                            val lift by animateDpAsState(
+                                targetValue = if (isDragging) 8.dp else 0.dp,
+                                animationSpec = Motion.spatial(),
+                                label = "dragLift",
+                            )
+                            val liftScale by animateFloatAsState(
+                                targetValue = if (isDragging) 1.02f else 1f,
+                                animationSpec = Motion.spatial(),
+                                label = "dragScale",
+                            )
+                            SwipeToDelete(
+                                enabled = !isDragging,
+                                resetKey = undoGeneration,
+                                onDelete = { onDelete(row.id) },
+                            ) {
+                                ReminderCard(
+                                    row = row,
+                                    masterEnabled = uiState.masterEnabled,
+                                    compact = uiState.compact,
+                                    elevation = lift,
+                                    onToggle = { enabled -> onToggle(row.id, enabled) },
+                                    onClick = { onEdit(row.id) },
+                                    modifier = Modifier
+                                        .graphicsLayer {
+                                            scaleX = liftScale
+                                            scaleY = liftScale
+                                        }
+                                        .longPressDraggableHandle(
+                                            enabled = uiState.canReorder,
+                                            onDragStarted = {
+                                                dragging = true
+                                                view.tap()
+                                            },
+                                            onDragStopped = {
+                                                dragging = false
+                                                dragOrder?.let(onReorder)
+                                            },
+                                        ),
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * Sound → vibrate only → mute, one tap each. Anything but "sound" is tinted, so a muted app is
+ * visible at a glance and nobody wonders later why their reminders went quiet.
+ */
+@Composable
+private fun AlertModeButton(mode: AlertMode, onClick: () -> Unit) {
+    val view = LocalView.current
+    val tint by animateColorAsState(
+        targetValue = if (mode == AlertMode.SOUND) {
+            MaterialTheme.colorScheme.onSurface
+        } else {
+            MaterialTheme.colorScheme.tertiary
+        },
+        animationSpec = Motion.fade(),
+        label = "alertModeTint",
+    )
+    IconButton(onClick = { view.tap(); onClick() }) {
+        // The new icon turns in while the old one turns away — a small dial being clicked over.
+        AnimatedContent(
+            targetState = mode,
+            transitionSpec = {
+                (scaleIn(Motion.expressive(), initialScale = 0.5f) + fadeIn())
+                    .togetherWith(scaleOut(Motion.snappy(), targetScale = 0.5f) + fadeOut())
+            },
+            label = "alertModeIcon",
+        ) { shown ->
+            val rotation = remember { Animatable(-45f) }
+            LaunchedEffect(Unit) { rotation.animateTo(0f, Motion.expressive()) }
+            Icon(
+                imageVector = when (shown) {
+                    AlertMode.SOUND -> Icons.AutoMirrored.Rounded.VolumeUp
+                    AlertMode.VIBRATE -> Icons.Rounded.Vibration
+                    AlertMode.MUTE -> Icons.AutoMirrored.Rounded.VolumeOff
+                },
+                contentDescription = stringResource(alertModeMessage(shown)),
+                tint = tint,
+                modifier = Modifier.graphicsLayer { rotationZ = rotation.value },
+            )
+        }
+    }
+}
+
+private fun alertModeMessage(mode: AlertMode): Int = when (mode) {
+    AlertMode.SOUND -> R.string.alert_mode_sound
+    AlertMode.VIBRATE -> R.string.alert_mode_vibrate
+    AlertMode.MUTE -> R.string.alert_mode_mute
+}
+
+/** Custom order (hold and drag) or soonest first — two choices, one small menu (#8). */
+@Composable
+private fun SortMenu(mode: String, onSortMode: (String) -> Unit) {
+    val view = LocalView.current
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { view.tap(); open = true }) {
+            Icon(Icons.Rounded.SwapVert, contentDescription = stringResource(R.string.sort_title))
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            listOf(
+                PreferenceHelper.SORT_CUSTOM to R.string.sort_custom,
+                PreferenceHelper.SORT_NEXT to R.string.sort_next,
+            ).forEach { (value, label) ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(label)) },
+                    leadingIcon = { RadioButton(selected = mode == value, onClick = null) },
+                    onClick = {
+                        view.tick()
+                        onSortMode(value)
+                        open = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Swipe a card to the left to delete it; Undo in the snackbar brings it back. The bin grows and
+ * deepens as the swipe nears the point of no return, and ticks once when it gets there.
+ */
+@Composable
+private fun SwipeToDelete(
+    enabled: Boolean,
+    /** A new value starts from a settled card — see [MainViewModel.undoGeneration]. */
+    resetKey: Int,
+    onDelete: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val view = LocalView.current
+    val state = key(resetKey) { rememberSwipeToDismissBoxState() }
+    val armed = state.targetValue == SwipeToDismissBoxValue.EndToStart
+
+    LaunchedEffect(armed) { if (armed) view.tick() }
+
+    SwipeToDismissBox(
+        state = state,
+        enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = enabled,
+        onDismiss = { value -> if (value == SwipeToDismissBoxValue.EndToStart) onDelete() },
+        backgroundContent = {
+            val color by animateColorAsState(
+                targetValue = if (armed) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.errorContainer
+                },
+                animationSpec = Motion.fade(),
+                label = "deleteBackground",
+            )
+            val iconScale by animateFloatAsState(
+                targetValue = if (armed) 1.25f else 0.85f,
+                animationSpec = Motion.expressive(),
+                label = "deleteIcon",
+            )
+            // Only there while the card is actually being swiped. Drawn all the time, it peeked
+            // out round the edges whenever the card shrank under a press or lifted for a drag.
+            if (state.dismissDirection == SwipeToDismissBoxValue.EndToStart) Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(MaterialTheme.shapes.large)
+                    .background(color)
+                    .padding(horizontal = 24.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Icon(
+                    Icons.Rounded.DeleteOutline,
+                    contentDescription = stringResource(R.string.action_delete),
+                    tint = if (armed) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = iconScale
+                        scaleY = iconScale
+                    },
+                )
+            }
+        },
+    ) {
+        content()
     }
 }
 
@@ -328,8 +603,12 @@ private fun MasterCard(
 /** A line of text and, when it contains one, the live countdown inside it. */
 private data class StatusLine(val text: String, val ticker: String? = null)
 
+/** A countdown reads well for the next few hours; beyond a day the moment itself is clearer. */
+private const val COUNTDOWN_LIMIT_MILLIS = 24 * 60 * 60_000L
+
 @Composable
 private fun masterSummary(uiState: MainUiState): StatusLine {
+    val context = LocalContext.current
     val next = uiState.nextUp
     val fallbackName = stringResource(R.string.reminder_default_name)
     return when {
@@ -339,15 +618,15 @@ private fun masterSummary(uiState: MainUiState): StatusLine {
             stringResource(
                 R.string.master_next_on,
                 next.reminder.name.ifBlank { fallbackName },
-                formatStartMoment(next.reminder.startAtMillis),
+                formatStartMoment(next.reminder.firstEventAt),
             )
         )
 
-        !next.isWithinSchedule -> StatusLine(
+        !next.isWithinSchedule || next.remainingMillis > COUNTDOWN_LIMIT_MILLIS -> StatusLine(
             stringResource(
                 R.string.master_next_at,
                 next.reminder.name.ifBlank { fallbackName },
-                formatClockTime(next.reminder.nextTriggerAt),
+                TimeLabels.moment(context, next.reminder.nextTriggerAt),
             )
         )
 
@@ -369,9 +648,11 @@ private fun masterSummary(uiState: MainUiState): StatusLine {
 private fun ReminderCard(
     row: ReminderRow,
     masterEnabled: Boolean,
+    compact: Boolean,
     onToggle: (Boolean) -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    elevation: androidx.compose.ui.unit.Dp = 0.dp,
 ) {
     val reminder = row.reminder
     val accent = accentColor(reminder.colorIndex)
@@ -398,10 +679,16 @@ private fun ReminderCard(
             .pressScale(interactionSource),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = containerColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = elevation, pressedElevation = elevation),
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        // Switching to the compact list morphs every card in place rather than swapping it.
+        Column(
+            modifier = Modifier
+                .animateContentSize(Motion.spatial())
+                .padding(horizontal = 16.dp, vertical = if (compact) 10.dp else 16.dp),
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                ProgressBadge(row = row, accent = accent, active = active)
+                ProgressBadge(row = row, accent = accent, active = active, compact = compact)
 
                 Spacer(Modifier.width(14.dp))
 
@@ -415,24 +702,50 @@ private fun ReminderCard(
                         animationSpec = Motion.fade(),
                         label = "cardTitle",
                     )
-                    Text(
-                        text = reminder.name.ifBlank {
-                            stringResource(R.string.reminder_default_name)
-                        },
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = titleColor,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = reminder.name.ifBlank {
+                                stringResource(R.string.reminder_default_name)
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = titleColor,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        if (reminder.alertStyle == AlertStyle.ALARM) {
+                            Spacer(Modifier.width(6.dp))
+                            Icon(
+                                Icons.Rounded.Alarm,
+                                contentDescription = stringResource(R.string.alert_style_alarm),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    }
                     Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = stringResource(
-                            R.string.every_interval,
-                            intervalLabel(reminder.intervalMinutes),
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    if (compact) {
+                        // Title and when it is due — all the compact list asks for (#8).
+                        val status = statusText(row, masterEnabled)
+                        LiveText(
+                            text = status.text,
+                            ticker = status.ticker,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (active && row.isWithinSchedule && !row.isPending) {
+                                accent
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    } else {
+                        Text(
+                            text = repeatLabel(reminder.repeat),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
 
                 Switch(
@@ -448,54 +761,58 @@ private fun ReminderCard(
                 )
             }
 
-            Spacer(Modifier.height(12.dp))
+            if (!compact) {
+                Spacer(Modifier.height(12.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                MetaChip(
-                    icon = { iconModifier ->
-                        Icon(
-                            Icons.Rounded.CalendarMonth,
-                            contentDescription = null,
-                            modifier = iconModifier,
-                        )
-                    },
-                    text = scheduleSummary(reminder),
-                    // Long schedule summaries give way first; the countdown must stay readable.
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                Spacer(Modifier.width(8.dp))
-                MetaChip(
-                    icon = { iconModifier ->
-                        Icon(
-                            imageVector = if (row.isPending) {
-                                Icons.Rounded.EventAvailable
-                            } else {
-                                Icons.Rounded.Timer
-                            },
-                            contentDescription = null,
-                            modifier = iconModifier,
-                        )
-                    },
-                    status = statusText(row, masterEnabled),
-                    emphasised = active && row.isWithinSchedule && !row.isPending,
-                )
-            }
-
-            // Only a timer that has not begun yet — and is actually armed — needs to say when it
-            // will. A paused one already says "Paused"; a countdown next to that reads as a
-            // contradiction.
-            AnimatedVisibility(
-                visible = row.isPending && active,
-                enter = fadeIn() + expandVertically(Motion.spatial()),
-                exit = fadeOut() + shrinkVertically(Motion.snappy()),
-            ) {
-                Column {
-                    Spacer(Modifier.height(10.dp))
-                    StartBanner(
-                        startAtMillis = reminder.startAtMillis,
-                        remainingMillis = row.remainingMillis,
-                        accent = accent,
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    MetaChip(
+                        icon = { iconModifier ->
+                            Icon(
+                                Icons.Rounded.CalendarMonth,
+                                contentDescription = null,
+                                modifier = iconModifier,
+                            )
+                        },
+                        text = scheduleSummary(reminder),
+                        // Long schedule summaries give way first; the countdown must stay readable.
+                        modifier = Modifier.weight(1f, fill = false),
                     )
+                    Spacer(Modifier.width(8.dp))
+                    MetaChip(
+                        icon = { iconModifier ->
+                            Icon(
+                                imageVector = if (row.isPending) {
+                                    Icons.Rounded.EventAvailable
+                                } else {
+                                    Icons.Rounded.Timer
+                                },
+                                contentDescription = null,
+                                modifier = iconModifier,
+                            )
+                        },
+                        status = statusText(row, masterEnabled),
+                        emphasised = active && row.isWithinSchedule && !row.isPending,
+                    )
+                }
+
+                // Only a timer that has not begun yet — and is actually armed — needs to say when it
+                // will. A paused one already says "Paused"; a countdown next to that reads as a
+                // contradiction.
+                AnimatedVisibility(
+                    visible = row.isPending && active,
+                    enter = fadeIn() + expandVertically(Motion.spatial()),
+                    exit = fadeOut() + shrinkVertically(Motion.snappy()),
+                ) {
+                    Column {
+                        Spacer(Modifier.height(10.dp))
+                        StartBanner(
+                            startAtMillis = reminder.firstEventAt,
+                            // Counted to the event itself, not to an early alert ahead of it.
+                            remainingMillis = row.remainingMillis +
+                                (reminder.nextEventAt - reminder.nextTriggerAt).coerceAtLeast(0L),
+                            accent = accent,
+                        )
+                    }
                 }
             }
         }
@@ -537,16 +854,14 @@ private fun StartBanner(startAtMillis: Long, remainingMillis: Long, accent: Colo
 
 @Composable
 private fun statusText(row: ReminderRow, masterEnabled: Boolean): StatusLine {
+    val context = LocalContext.current
     val reminder = row.reminder
     return when {
         !masterEnabled || !reminder.enabled -> StatusLine(stringResource(R.string.paused))
         row.isPending -> StatusLine(stringResource(R.string.not_started_yet))
         reminder.nextTriggerAt <= 0L -> StatusLine(stringResource(R.string.schedule_never))
-        !row.isWithinSchedule -> StatusLine(
-            stringResource(
-                R.string.waiting_for_window,
-                formatClockTime(reminder.nextTriggerAt),
-            )
+        !row.isWithinSchedule || row.remainingMillis > COUNTDOWN_LIMIT_MILLIS -> StatusLine(
+            stringResource(R.string.next_at, TimeLabels.moment(context, reminder.nextTriggerAt))
         )
 
         else -> {
@@ -557,11 +872,16 @@ private fun statusText(row: ReminderRow, masterEnabled: Boolean): StatusLine {
 }
 
 @Composable
-private fun ProgressBadge(row: ReminderRow, accent: Color, active: Boolean) {
+private fun ProgressBadge(row: ReminderRow, accent: Color, active: Boolean, compact: Boolean) {
     val progress by animateFloatAsState(
         targetValue = row.progress,
         animationSpec = tween(600),
         label = "cardProgress",
+    )
+    val size by animateDpAsState(
+        targetValue = if (compact) 40.dp else 48.dp,
+        animationSpec = Motion.spatial(),
+        label = "badgeSize",
     )
 
     // The last minute before a reminder fires, the badge breathes — visible from across a desk
@@ -582,7 +902,7 @@ private fun ProgressBadge(row: ReminderRow, accent: Color, active: Boolean) {
 
     Box(
         modifier = Modifier
-            .size(48.dp)
+            .size(size)
             .graphicsLayer {
                 scaleX = pulse
                 scaleY = pulse
@@ -596,7 +916,7 @@ private fun ProgressBadge(row: ReminderRow, accent: Color, active: Boolean) {
         ) {
             CircularProgressIndicator(
                 progress = { progress },
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(size),
                 strokeWidth = 3.dp,
                 strokeCap = StrokeCap.Round,
                 color = accent,
@@ -616,7 +936,7 @@ private fun ProgressBadge(row: ReminderRow, accent: Color, active: Boolean) {
 
         Box(
             modifier = Modifier
-                .size(34.dp)
+                .size(size - 14.dp)
                 .clip(CircleShape)
                 .background(badgeColor),
             contentAlignment = Alignment.Center,
@@ -879,57 +1199,77 @@ private fun issueLabel(issue: ReliabilityIssue, vendorName: String): String =
         stringResource(issue.labelRes)
     }
 
+private fun previewRows(now: Long) = listOf(
+    ReminderRow(
+        reminder = Reminder(
+            id = 1,
+            name = "Take a walk",
+            repeat = Repeat(RepeatUnit.TIME, 50),
+            colorIndex = 0,
+            nextTriggerAt = now + 12 * 60_000L,
+        ),
+        remainingMillis = 12 * 60_000L,
+        isWithinSchedule = true,
+    ),
+    ReminderRow(
+        reminder = Reminder(
+            id = 2,
+            name = "Lunch at the cathedral",
+            repeat = Repeat(RepeatUnit.WEEKS, 1),
+            alertStyle = AlertStyle.ALARM,
+            colorIndex = 3,
+            startAtMillis = now + 14L * 24 * 60 * 60_000L,
+            nextTriggerAt = now + 14L * 24 * 60 * 60_000L,
+        ),
+        remainingMillis = 14L * 24 * 60 * 60_000L,
+        isWithinSchedule = false,
+        isPending = true,
+    ),
+    ReminderRow(
+        reminder = Reminder(
+            id = 3,
+            name = "Drink water",
+            repeat = Repeat(RepeatUnit.TIME, 90),
+            enabled = false,
+            colorIndex = 4,
+        ),
+        remainingMillis = 0L,
+        isWithinSchedule = false,
+    ),
+)
+
 @Preview(showBackground = true)
 @Composable
 private fun MainScreenPreview() {
-    val now = System.currentTimeMillis()
     ReReminderTheme(dynamicColor = false) {
         MainScreen(
-            uiState = MainUiState(
-                loaded = true,
-                rows = listOf(
-                    ReminderRow(
-                        reminder = Reminder(
-                            id = 1,
-                            name = "Take a walk",
-                            intervalMinutes = 50,
-                            colorIndex = 0,
-                            nextTriggerAt = now + 12 * 60_000L,
-                        ),
-                        remainingMillis = 12 * 60_000L,
-                        isWithinSchedule = true,
-                    ),
-                    ReminderRow(
-                        reminder = Reminder(
-                            id = 2,
-                            name = "Lunch at the cathedral",
-                            intervalMinutes = 60 * 24 * 7,
-                            colorIndex = 3,
-                            startAtMillis = now + 14L * 24 * 60 * 60_000L,
-                            nextTriggerAt = now + 14L * 24 * 60 * 60_000L,
-                        ),
-                        remainingMillis = 14L * 24 * 60 * 60_000L,
-                        isWithinSchedule = false,
-                        isPending = true,
-                    ),
-                    ReminderRow(
-                        reminder = Reminder(
-                            id = 3,
-                            name = "Drink water",
-                            intervalMinutes = 90,
-                            enabled = false,
-                            colorIndex = 4,
-                        ),
-                        remainingMillis = 0L,
-                        isWithinSchedule = false,
-                    ),
-                ),
-            ),
+            uiState = MainUiState(loaded = true, rows = previewRows(System.currentTimeMillis())),
             onToggle = { _, _ -> },
             onToggleMaster = {},
             onEdit = {},
             onCreate = {},
             onSettings = {},
+            onSortMode = {},
+            onReorder = {},
+            onDelete = {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun CompactListPreview() {
+    ReReminderTheme(dynamicColor = false) {
+        MainScreen(
+            uiState = MainUiState(loaded = true, compact = true, rows = previewRows(System.currentTimeMillis())),
+            onToggle = { _, _ -> },
+            onToggleMaster = {},
+            onEdit = {},
+            onCreate = {},
+            onSettings = {},
+            onSortMode = {},
+            onReorder = {},
+            onDelete = {},
         )
     }
 }
@@ -945,6 +1285,9 @@ private fun EmptyStatePreview() {
             onEdit = {},
             onCreate = {},
             onSettings = {},
+            onSortMode = {},
+            onReorder = {},
+            onDelete = {},
         )
     }
 }

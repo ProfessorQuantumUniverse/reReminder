@@ -1,8 +1,18 @@
 package com.olaf.rereminder.ui.editor
 
+import android.app.Activity
+import android.content.Intent
+import android.media.RingtoneManager
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -28,26 +38,30 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.ExpandMore
-import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,47 +77,110 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.olaf.rereminder.R
+import com.olaf.rereminder.data.AlertStyle
 import com.olaf.rereminder.data.MessageTemplate
 import com.olaf.rereminder.data.MessageVariable
 import com.olaf.rereminder.data.Reminder
+import com.olaf.rereminder.data.Repeat
+import com.olaf.rereminder.data.RepeatUnit
+import com.olaf.rereminder.data.SoundChoice
+import com.olaf.rereminder.data.SoundMode
+import com.olaf.rereminder.data.TimeWindow
 import com.olaf.rereminder.ui.components.CollapsingHeader
-import com.olaf.rereminder.ui.components.IntervalPickerDialogCompose
+import com.olaf.rereminder.ui.components.RepeatDialog
 import com.olaf.rereminder.ui.components.SectionCard
 import com.olaf.rereminder.ui.components.SectionDivider
 import com.olaf.rereminder.ui.components.SectionSwitchRow
 import com.olaf.rereminder.ui.components.SectionValueRow
 import com.olaf.rereminder.ui.components.StartMomentDialog
 import com.olaf.rereminder.ui.components.rememberCollapseProgress
-import com.olaf.rereminder.ui.format.dayInitial
-import com.olaf.rereminder.ui.format.formatMinuteOfDay
+import com.olaf.rereminder.ui.format.earlyAlertsLabel
 import com.olaf.rereminder.ui.format.formatStartMoment
-import com.olaf.rereminder.ui.format.intervalLabel
+import com.olaf.rereminder.ui.format.repeatLabel
 import com.olaf.rereminder.ui.format.scheduleSummary
+import com.olaf.rereminder.ui.format.windowLabel
 import com.olaf.rereminder.ui.theme.Motion
 import com.olaf.rereminder.ui.theme.ReReminderTheme
 import com.olaf.rereminder.ui.theme.ReminderAccents
 import com.olaf.rereminder.ui.theme.accentColor
 import com.olaf.rereminder.ui.theme.tap
 import com.olaf.rereminder.ui.theme.tappable
-import java.time.DayOfWeek
+import com.olaf.rereminder.ui.theme.tick
+import com.olaf.rereminder.utils.NotificationHelper
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 @Composable
 fun ReminderEditorRoute(
     onClose: () -> Unit,
     viewModel: ReminderEditorViewModel = viewModel(),
 ) {
+    val context = LocalContext.current
     val draft by viewModel.draft.collectAsStateWithLifecycle()
+    val pickerTitle = stringResource(R.string.ringtone_picker_title)
+
+    val tonePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@rememberLauncherForActivityResult
+        val uri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+        }
+        // Picking "None" in the system picker is the same as choosing Silent.
+        viewModel.update {
+            it.copy(
+                sound = if (uri == null) {
+                    SoundChoice(SoundMode.SILENT)
+                } else {
+                    SoundChoice(SoundMode.TONE, uri.toString())
+                }
+            )
+        }
+    }
+
+    // The full-screen permission can be granted in system settings and come back.
+    var fullScreenAllowed by remember { mutableStateOf(NotificationHelper.canUseFullScreenIntent(context)) }
+    LifecycleResumeEffect(Unit) {
+        fullScreenAllowed = NotificationHelper.canUseFullScreenIntent(context)
+        onPauseOrDispose { }
+    }
 
     ReminderEditorScreen(
         draft = draft,
         isNew = viewModel.isNew,
+        canSave = draft.isSchedulable,
+        fullScreenAllowed = fullScreenAllowed,
         onChange = viewModel::update,
+        onPickTone = { current ->
+            val type = if (draft.alertStyle == AlertStyle.ALARM) RingtoneManager.TYPE_ALARM else RingtoneManager.TYPE_NOTIFICATION
+            val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, type)
+                putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, pickerTitle)
+                putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, false)
+                putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, current)
+            }
+            runCatching { tonePicker.launch(intent) }
+        },
+        onAllowFullScreen = {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                runCatching {
+                    context.startActivity(
+                        Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, "package:${context.packageName}".toUri())
+                    )
+                }
+            }
+        },
         onSave = {
             viewModel.save()
             onClose()
@@ -119,36 +196,37 @@ fun ReminderEditorRoute(
 /**
  * The reminder editor.
  *
- * Three blocks rather than seven: what the reminder says (name, colour, message), when it runs
- * (interval, start, schedule) and how it announces itself (sound, vibration). Every option the
- * old layout had is still here — the grouping just stopped competing with itself. It used to mix
- * all-caps headers, full-bleed dividers and hand-drawn outlines in one scroll, which is three
- * ways of saying "these belong together" fighting for the same job.
+ * Three blocks: what the reminder says (name, colour, message), when it runs (repeat, start,
+ * schedule, early alerts) and how it announces itself (style, sound, vibration). Each block shows
+ * one short row per setting; the detail lives in a dialog behind the row, so the power added in
+ * 4.0 doesn't turn the page into a form.
  */
 @Composable
 fun ReminderEditorScreen(
     draft: Reminder,
     isNew: Boolean,
+    canSave: Boolean,
+    fullScreenAllowed: Boolean,
     onChange: ((Reminder) -> Reminder) -> Unit,
+    onPickTone: (Uri?) -> Unit,
+    onAllowFullScreen: () -> Unit,
     onSave: () -> Unit,
     onDelete: () -> Unit,
     onBack: () -> Unit,
 ) {
-    var showIntervalDialog by remember { mutableStateOf(false) }
+    var showRepeatDialog by remember { mutableStateOf(false) }
     var showStartDialog by remember { mutableStateOf(false) }
+    var showEarlyDialog by remember { mutableStateOf(false) }
+    var showSoundDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var timeTarget by remember { mutableStateOf<TimeTarget?>(null) }
-
-    // A timer without any restriction runs every day, all day — that is the "no schedule" state.
-    val hasSchedule = !(draft.isEveryDay && draft.isAllDay)
-    var scheduleOpen by rememberSaveable(draft.id) { mutableStateOf(hasSchedule) }
+    /** Index into the windows being edited; -1 while adding a new one. */
+    var editingWindow by remember { mutableStateOf<Int?>(null) }
 
     val accent by animateColorAsState(
         targetValue = accentColor(draft.colorIndex),
         animationSpec = Motion.fade(),
         label = "editorAccent",
     )
-    val canSave = draft.days.isNotEmpty() && draft.intervalMinutes > 0
 
     val scrollState = rememberScrollState()
     val collapseProgress by rememberCollapseProgress(scrollState)
@@ -209,53 +287,70 @@ fun ReminderEditorScreen(
 
             SectionCard(title = stringResource(R.string.editor_section_timing)) {
                 SectionValueRow(
-                    title = stringResource(R.string.editor_repeat_every),
-                    value = intervalLabel(draft.intervalMinutes),
-                    // The interval is the point of the whole screen, so it keeps the accent.
+                    title = stringResource(R.string.editor_repeat),
+                    value = repeatLabel(draft.repeat),
+                    // The repeat is the point of the whole screen, so it keeps the accent.
                     valueColor = accent,
-                    onClick = { showIntervalDialog = true },
+                    onClick = { showRepeatDialog = true },
                 )
                 SectionDivider()
                 SectionValueRow(
                     title = stringResource(R.string.editor_section_start),
-                    value = formatStartMoment(draft.startAtMillis),
+                    value = if (draft.repeat.isCalendar && !draft.hasStartMoment) {
+                        stringResource(R.string.start_required)
+                    } else {
+                        formatStartMoment(draft.startAtMillis)
+                    },
+                    valueColor = if (draft.repeat.isCalendar && !draft.hasStartMoment) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
                     onClick = { showStartDialog = true },
                 )
+                // Days, weeks and months fire at the start's time of day; hours of activity only
+                // mean something for an interval timer, so the section steps aside.
+                AnimatedVisibility(
+                    visible = !draft.repeat.isCalendar,
+                    enter = fadeIn() + expandVertically(Motion.spatial()),
+                    exit = fadeOut() + shrinkVertically(Motion.snappy()),
+                ) {
+                    Column {
+                        SectionDivider()
+                        ScheduleSection(
+                            draft = draft,
+                            onChange = onChange,
+                            onEditWindow = { editingWindow = it },
+                        )
+                    }
+                }
                 SectionDivider()
-                ScheduleSection(
-                    draft = draft,
-                    accent = accent,
-                    open = scheduleOpen,
-                    onOpenChange = { open ->
-                        scheduleOpen = open
-                        onChange {
-                            if (open) {
-                                // Opening means "restrict it" — offer the common case straight away.
-                                it.copy(
-                                    days = Reminder.WEEKDAYS,
-                                    startMinute = 9 * 60,
-                                    endMinute = 17 * 60,
-                                )
-                            } else {
-                                it.copy(
-                                    days = Reminder.ALL_DAYS,
-                                    startMinute = 0,
-                                    endMinute = Reminder.MINUTES_PER_DAY,
-                                )
-                            }
-                        }
-                    },
-                    onChange = onChange,
-                    onPickTime = { timeTarget = it },
+                SectionValueRow(
+                    title = stringResource(R.string.early_alerts_title),
+                    value = earlyAlertsLabel(draft.earlyAlerts),
+                    onClick = { showEarlyDialog = true },
                 )
             }
 
             Column {
                 SectionCard(title = stringResource(R.string.editor_section_alerts)) {
-                    SectionSwitchRow(
+                    AlertStyleRow(
+                        style = draft.alertStyle,
+                        accent = accent,
+                        onStyle = { style -> onChange { it.copy(alertStyle = style) } },
+                    )
+                    AnimatedVisibility(
+                        visible = draft.alertStyle == AlertStyle.ALARM && !fullScreenAllowed,
+                        enter = fadeIn() + expandVertically(Motion.spatial()),
+                        exit = fadeOut() + shrinkVertically(Motion.snappy()),
+                    ) {
+                        FullScreenHint(onAllow = onAllowFullScreen)
+                    }
+                    SectionDivider()
+                    SectionValueRow(
                         title = stringResource(R.string.editor_sound),
-                        checked = draft.soundEnabled,
-                        onCheckedChange = { on -> onChange { it.copy(soundEnabled = on) } },
+                        value = soundLabel(draft.sound),
+                        onClick = { showSoundDialog = true },
                     )
                     SectionDivider()
                     SectionSwitchRow(
@@ -265,7 +360,9 @@ fun ReminderEditorScreen(
                     )
                 }
                 Text(
-                    text = stringResource(R.string.editor_alert_hint),
+                    text = stringResource(
+                        if (draft.alertStyle == AlertStyle.ALARM) R.string.editor_alarm_hint else R.string.editor_alert_hint
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp),
@@ -295,13 +392,18 @@ fun ReminderEditorScreen(
         }
     }
 
-    if (showIntervalDialog) {
-        IntervalPickerDialogCompose(
-            currentInterval = draft.intervalMinutes,
-            onDismiss = { showIntervalDialog = false },
-            onIntervalSelected = { hours, minutes ->
-                onChange { it.copy(intervalMinutes = hours * 60 + minutes) }
-                showIntervalDialog = false
+    if (showRepeatDialog) {
+        val zone = remember { ZoneId.systemDefault() }
+        val anchor = (if (draft.hasStartMoment) Reminder.localDateTimeOf(draft.startAtMillis, zone) else LocalDateTime.now(zone))
+        RepeatDialog(
+            current = draft.repeat,
+            accent = accent,
+            anchorWeekday = anchor.dayOfWeek.value,
+            anchorMonthDay = anchor.dayOfMonth,
+            onDismiss = { showRepeatDialog = false },
+            onConfirm = { repeat ->
+                onChange { it.withRepeat(repeat) }
+                showRepeatDialog = false
             },
         )
     }
@@ -309,6 +411,7 @@ fun ReminderEditorScreen(
     if (showStartDialog) {
         StartMomentDialog(
             initialMillis = draft.startAtMillis,
+            allowImmediate = !draft.repeat.isCalendar,
             onDismiss = { showStartDialog = false },
             onConfirm = { millis ->
                 onChange { it.copy(startAtMillis = millis) }
@@ -317,20 +420,43 @@ fun ReminderEditorScreen(
         )
     }
 
-    timeTarget?.let { target ->
-        val current = if (target == TimeTarget.START) draft.startMinute else draft.endMinute
-        TimePickerDialog(
-            initialMinuteOfDay = current,
-            onDismiss = { timeTarget = null },
-            onConfirm = { minuteOfDay ->
+    if (showEarlyDialog) {
+        EarlyAlertsDialog(
+            selected = draft.earlyAlerts,
+            shortestGapMinutes = draft.repeat.shortestGapMinutes,
+            onDismiss = { showEarlyDialog = false },
+            onConfirm = { offsets ->
+                onChange { it.copy(earlyAlerts = offsets) }
+                showEarlyDialog = false
+            },
+        )
+    }
+
+    if (showSoundDialog) {
+        SoundDialog(
+            current = draft.sound,
+            alertStyle = draft.alertStyle,
+            onPickTone = onPickTone,
+            onDismiss = { showSoundDialog = false },
+            onConfirm = { sound ->
+                onChange { it.copy(sound = sound) }
+                showSoundDialog = false
+            },
+        )
+    }
+
+    editingWindow?.let { index ->
+        WindowDialog(
+            initial = draft.windows.getOrNull(index) ?: TimeWindow(),
+            accent = accent,
+            onDismiss = { editingWindow = null },
+            onConfirm = { window ->
                 onChange {
-                    if (target == TimeTarget.START) {
-                        it.copy(startMinute = minuteOfDay)
-                    } else {
-                        it.copy(endMinute = minuteOfDay)
-                    }
+                    val windows = it.windows.toMutableList()
+                    if (index in windows.indices) windows[index] = window else windows += window
+                    it.copy(windows = windows)
                 }
-                timeTarget = null
+                editingWindow = null
             },
         )
     }
@@ -361,7 +487,26 @@ fun ReminderEditorScreen(
     }
 }
 
-private enum class TimeTarget { START, END }
+/**
+ * Applies a new repeat rule and keeps the rest of the reminder consistent with it: calendar
+ * repeats need a start moment to count from, and early alerts must stay shorter than the gap
+ * between two events.
+ */
+private fun Reminder.withRepeat(repeat: Repeat): Reminder {
+    val start = if (repeat.isCalendar && !hasStartMoment) {
+        // Next full hour: a sensible first event nobody has to correct.
+        val zone = ZoneId.systemDefault()
+        LocalDateTime.now(zone).plusHours(1).withMinute(0).withSecond(0).withNano(0)
+            .atZone(zone).toInstant().toEpochMilli()
+    } else {
+        startAtMillis
+    }
+    return copy(
+        repeat = repeat,
+        startAtMillis = start,
+        earlyAlerts = earlyAlerts.filter { it < repeat.shortestGapMinutes },
+    )
+}
 
 // --- What the reminder says ----------------------------------------------
 
@@ -525,30 +670,30 @@ private fun ColourDot(color: Color, selected: Boolean, index: Int, onSelect: () 
 // --- Schedule -------------------------------------------------------------
 
 /**
- * The weekday and time-window restriction: one switch row that grows its details underneath.
- * Off is the common case, so the detail never occupies the screen unless it is in use.
+ * The active-hours restriction: one switch row that grows its windows underneath. Off is the
+ * common case, so the detail never occupies the screen unless it is in use. Several windows
+ * (#7) are one line each — "Mon–Fri · 9:00–17:00", "Sat · 10:00–12:00".
  */
 @Composable
 private fun ScheduleSection(
     draft: Reminder,
-    accent: Color,
-    open: Boolean,
-    onOpenChange: (Boolean) -> Unit,
     onChange: ((Reminder) -> Reminder) -> Unit,
-    onPickTime: (TimeTarget) -> Unit,
+    onEditWindow: (Int) -> Unit,
 ) {
     val view = LocalView.current
+    val open = draft.windows.isNotEmpty()
 
     Column {
         SectionSwitchRow(
             title = stringResource(R.string.editor_section_schedule),
-            subtitle = if (open) {
-                scheduleSummary(draft)
-            } else {
-                stringResource(R.string.editor_schedule_always)
-            },
+            subtitle = scheduleSummary(draft),
             checked = open,
-            onCheckedChange = onOpenChange,
+            onCheckedChange = { on ->
+                onChange {
+                    // Switching on means "restrict it" — offer the common case straight away.
+                    it.copy(windows = if (on) listOf(TimeWindow()) else emptyList())
+                }
+            },
         )
 
         AnimatedVisibility(
@@ -557,83 +702,166 @@ private fun ScheduleSection(
             exit = fadeOut() + shrinkVertically(Motion.snappy()),
         ) {
             Column(modifier = Modifier.padding(bottom = 8.dp)) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    for (isoDay in 1..7) {
-                        DayToggle(
-                            label = dayInitial(DayOfWeek.of(isoDay)),
-                            selected = isoDay in draft.days,
-                            accent = accent,
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                onChange { reminder ->
-                                    val days = reminder.days.toMutableSet()
-                                    if (!days.add(isoDay)) days.remove(isoDay)
-                                    reminder.copy(days = days)
-                                }
-                            },
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(10.dp))
-
-                FlowRow(
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    AssistChip(
-                        onClick = { view.tap(); onChange { it.copy(days = Reminder.ALL_DAYS) } },
-                        label = { Text(stringResource(R.string.preset_every_day)) },
-                    )
-                    AssistChip(
-                        onClick = { view.tap(); onChange { it.copy(days = Reminder.WEEKDAYS) } },
-                        label = { Text(stringResource(R.string.preset_weekdays)) },
-                    )
-                    AssistChip(
-                        onClick = { view.tap(); onChange { it.copy(days = setOf(6, 7)) } },
-                        label = { Text(stringResource(R.string.preset_weekend)) },
+                draft.windows.forEachIndexed { index, window ->
+                    WindowRow(
+                        label = windowLabel(window),
+                        removable = draft.windows.size > 1,
+                        onClick = { onEditWindow(index) },
+                        onRemove = {
+                            view.tap()
+                            onChange { it.copy(windows = it.windows.filterIndexed { i, _ -> i != index }) }
+                        },
                     )
                 }
-
-                SectionSwitchRow(
-                    title = stringResource(R.string.editor_all_day),
-                    checked = draft.isAllDay,
-                    onCheckedChange = { allDay ->
-                        onChange {
-                            if (allDay) {
-                                it.copy(startMinute = 0, endMinute = Reminder.MINUTES_PER_DAY)
-                            } else {
-                                it.copy(startMinute = 9 * 60, endMinute = 17 * 60)
-                            }
-                        }
-                    },
-                )
-
-                AnimatedVisibility(
-                    visible = !draft.isAllDay,
-                    enter = fadeIn() + expandVertically(Motion.spatial()),
-                    exit = fadeOut() + shrinkVertically(Motion.snappy()),
+                TextButton(
+                    onClick = { view.tap(); onEditWindow(-1) },
+                    modifier = Modifier.padding(start = 8.dp),
                 ) {
-                    Column {
-                        SectionValueRow(
-                            title = stringResource(R.string.editor_from),
-                            value = formatMinuteOfDay(draft.startMinute),
-                            onClick = { onPickTime(TimeTarget.START) },
-                        )
-                        SectionValueRow(
-                            title = stringResource(R.string.editor_until),
-                            value = formatMinuteOfDay(draft.endMinute),
-                            onClick = { onPickTime(TimeTarget.END) },
-                        )
-                    }
+                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.editor_add_window))
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun WindowRow(label: String, removable: Boolean, onClick: () -> Unit, onRemove: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 2.dp)
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .tappable(pressedScale = 0.98f, onClick = onClick)
+            .padding(start = 16.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f)
+                .padding(vertical = 14.dp),
+        )
+        AnimatedVisibility(
+            visible = removable,
+            enter = scaleIn() + fadeIn(),
+            exit = scaleOut() + fadeOut(),
+        ) {
+            IconButton(onClick = onRemove) {
+                Icon(
+                    Icons.Rounded.Close,
+                    contentDescription = stringResource(R.string.editor_remove_window),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+// --- Alerts ---------------------------------------------------------------
+
+/** Notification or alarm (#10). The chosen icon gives a small wiggle, like a bell being rung. */
+@Composable
+private fun AlertStyleRow(style: AlertStyle, accent: Color, onStyle: (AlertStyle) -> Unit) {
+    val view = LocalView.current
+    Column(modifier = Modifier.padding(start = 20.dp, end = 16.dp, top = 14.dp, bottom = 12.dp)) {
+        Text(
+            text = stringResource(R.string.editor_alert_style),
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Spacer(Modifier.height(10.dp))
+        val options = AlertStyle.entries
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            options.forEachIndexed { index, option ->
+                val selected = style == option
+                SegmentedButton(
+                    selected = selected,
+                    onClick = {
+                        if (!selected) {
+                            view.tick()
+                            onStyle(option)
+                        }
+                    },
+                    shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = accent.copy(alpha = 0.18f),
+                    ),
+                    icon = {
+                        WigglingIcon(
+                            selected = selected,
+                            icon = {
+                                Icon(
+                                    if (option == AlertStyle.ALARM) Icons.Rounded.Alarm else Icons.Rounded.NotificationsNone,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            },
+                        )
+                    },
+                    label = {
+                        Text(
+                            stringResource(
+                                if (option == AlertStyle.ALARM) R.string.alert_style_alarm else R.string.alert_style_notification
+                            ),
+                            maxLines = 1,
+                        )
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WigglingIcon(selected: Boolean, icon: @Composable () -> Unit) {
+    val rotation = remember { Animatable(0f) }
+    // Only a change of style rings the bell — not the editor opening with one already chosen.
+    var settled by remember { mutableStateOf(false) }
+    LaunchedEffect(selected) {
+        if (!settled) {
+            settled = true
+            return@LaunchedEffect
+        }
+        if (selected) {
+            rotation.animateTo(
+                targetValue = 0f,
+                animationSpec = keyframes {
+                    durationMillis = 420
+                    -14f at 70
+                    12f at 160
+                    -7f at 250
+                    4f at 330
+                },
+            )
+        }
+    }
+    Box(modifier = Modifier.graphicsLayer { rotationZ = rotation.value }) { icon() }
+}
+
+@Composable
+private fun FullScreenHint(onAllow: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .padding(bottom = 12.dp)
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(start = 14.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.alarm_full_screen_needed),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onErrorContainer,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onAllow) { Text(stringResource(R.string.alarm_full_screen_allow)) }
     }
 }
 
@@ -670,80 +898,6 @@ private fun ExpandableHeader(title: String, expanded: Boolean, onToggle: () -> U
     }
 }
 
-@Composable
-private fun DayToggle(
-    label: String,
-    selected: Boolean,
-    accent: Color,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    val background by animateColorAsState(
-        targetValue = if (selected) accent else MaterialTheme.colorScheme.surfaceContainerHighest,
-        animationSpec = Motion.fade(),
-        label = "dayBackground",
-    )
-    val textColor by animateColorAsState(
-        targetValue = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-        animationSpec = Motion.fade(),
-        label = "dayText",
-    )
-    // No resting scale for the selected state: the pills sit only a few dp apart, and a bouncy
-    // spring past 1f pushed neighbours into each other. The press scale from `tappable` and the
-    // colour fill are feedback enough.
-    Box(
-        modifier = modifier
-            .height(42.dp)
-            .clip(CircleShape)
-            .background(background)
-            .tappable(pressedScale = 0.88f, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            textAlign = TextAlign.Center,
-            color = textColor,
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TimePickerDialog(
-    initialMinuteOfDay: Int,
-    onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit,
-) {
-    val time = Reminder.minuteToLocalTime(initialMinuteOfDay)
-    val state = rememberTimePickerState(
-        initialHour = time.hour,
-        initialMinute = time.minute,
-        is24Hour = android.text.format.DateFormat.is24HourFormat(LocalContext.current),
-    )
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Rounded.Schedule, contentDescription = null) },
-        text = {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center,
-            ) {
-                TimePicker(state = state)
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onConfirm(state.hour * 60 + state.minute) }) {
-                Text(stringResource(R.string.action_ok))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
-    )
-}
-
 /** Inserts [text] at the caret (replacing any selection) and leaves the caret after it. */
 private fun TextFieldValue.insertAtCaret(text: String): TextFieldValue {
     val start = selection.min.coerceIn(0, this.text.length)
@@ -762,11 +916,16 @@ private fun ReminderEditorPreview() {
                 id = 1,
                 name = "Take a walk",
                 message = "Time to move",
-                intervalMinutes = 50,
+                repeat = Repeat(RepeatUnit.TIME, 50),
+                windows = listOf(TimeWindow()),
                 colorIndex = 1,
             ),
             isNew = false,
+            canSave = true,
+            fullScreenAllowed = true,
             onChange = {},
+            onPickTone = {},
+            onAllowFullScreen = {},
             onSave = {},
             onDelete = {},
             onBack = {},

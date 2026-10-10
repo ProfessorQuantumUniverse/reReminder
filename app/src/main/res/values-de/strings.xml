@@ -15,7 +15,6 @@
     <string name="reminder_default_name">Erinnerung</string>
     <string name="next_in">in %1$s</string>
     <string name="paused">Pausiert</string>
-    <string name="waiting_for_window">Startet %1$s</string>
     <string name="not_started_yet">Noch nicht gestartet</string>
     <string name="starts_on">Startet %1$s · in %2$s</string>
 
@@ -48,16 +47,15 @@
     <string name="editor_message_placeholder">z. B. Zeit, die Beine zu vertreten</string>
     <string name="editor_message_hint">Tippe auf einen Chip, um einen Wert einzufügen, der beim Auslösen ersetzt wird.</string>
     <string name="editor_preview">Vorschau: %1$s</string>
-    <string name="editor_repeat_every">Wiederholen alle</string>
     <string name="editor_insert_variable">Wert einfügen</string>
     <string name="editor_schedule_always">Läuft zu jeder Zeit</string>
     <string name="editor_all_day">Ganztägig</string>
     <string name="editor_from">Von</string>
     <string name="editor_until">Bis</string>
     <string name="editor_colour_selected">Farbe %1$d ausgewählt</string>
-    <string name="editor_sound">Ton abspielen</string>
+    <string name="editor_sound">Ton</string>
     <string name="editor_vibration">Vibrieren</string>
-    <string name="editor_alert_hint">Ton- und Vibrationsart werden in den Einstellungen festgelegt und gelten für alle Timer.</string>
+    <string name="editor_alert_hint">Vorab-Erinnerungen kommen als Benachrichtigung. Wie \"Standard\" klingt, legst du in den Einstellungen fest.</string>
     <string name="editor_delete">Timer löschen</string>
     <string name="editor_delete_confirm_title">Diesen Timer löschen?</string>
     <string name="editor_delete_confirm_text">„%1$s“ wird entfernt und erinnert dich nicht mehr.</string>
@@ -71,11 +69,10 @@
     <string name="variable_day">Wochentag</string>
     <string name="variable_name">Reminder-Name</string>
     <string name="variable_interval">Intervall</string>
-    <string name="variable_next">Nächste Erinnerung</string>
+    <string name="variable_next">Nächster Termin</string>
 
     <!-- Interval picker -->
     <string name="interval_dialog_title">Erinnerungsintervall festlegen</string>
-    <string name="interval_dialog_hint">Ein Rad wischen oder unten eine Vorgabe antippen.</string>
 
     <!-- Startdatum und -zeit -->
     <string name="start_dialog_title">Erste Erinnerung</string>
@@ -98,19 +95,14 @@
     <!-- Notification content -->
     <string name="reminder_notification_text">Deine Nachricht</string>
     <string name="notification_channel_name">Erinnerungen</string>
-    <string name="notification_channel_description">Kanal für wiederkehrende Erinnerungsbenachrichtigungen</string>
+    <string name="notification_channel_description">Erinnerungsbenachrichtigungen. reReminder spielt den Ton jeder Erinnerung selbst ab, daher bleibt dieser Kanal stumm.</string>
 
     <!-- Settings -->
     <string name="settings_group_alerts">Signale</string>
-    <string name="sound_enabled_label">Ton aktiviert</string>
-    <string name="sound_mode_title">Ton oder Sprachausgabe</string>
-    <string name="sound_mode_dialog_title">Ton oder Sprachausgabe</string>
-    <string name="sound_mode_ringtone">Ton</string>
-    <string name="sound_mode_tts">Sprachausgabe</string>
-    <string name="ringtone_title">Klingelton</string>
-    <string name="ringtone_picker_title">Benachrichtigungston auswählen</string>
+    <string name="ringtone_title">Benachrichtigungston</string>
+    <string name="ringtone_picker_title">Ton auswählen</string>
     <string name="default_label">Standard</string>
-    <string name="settings_alerts_hint">Diese gelten für alle Reminder. Einzelne Reminder können Ton oder Vibration trotzdem stummschalten.</string>
+    <string name="settings_alerts_hint">\"Standard\" in einer Erinnerung spielt diese Töne. Jede Erinnerung wählt im Editor ihren eigenen Ton oder die Sprachausgabe, und der Lautsprecher-Knopf über der Liste schaltet alles auf einmal stumm.</string>
 
     <string name="vibration_enabled_label">Vibration</string>
     <string name="vibration_pattern_title">Vibrationsmuster</string>
@@ -172,4 +164,126 @@
 
     <!-- Permissions -->
     <string name="permission_required_toast">Für die korrekte Funktion der App wird die Benachrichtigungsberechtigung benötigt.</string>
+
+    <!-- 4.0: Wiederholung (#7) -->
+    <string name="editor_repeat">Wiederholen</string>
+    <string name="repeat_unit_time">Stunden</string>
+    <string name="repeat_unit_days">Tage</string>
+    <string name="repeat_unit_weeks">Wochen</string>
+    <string name="repeat_unit_months">Monate</string>
+    <plurals name="repeat_every_days">
+        <item quantity="one">Jeden Tag</item>
+        <item quantity="other">Alle %1$d Tage</item>
+    </plurals>
+    <plurals name="repeat_every_weeks">
+        <item quantity="one">Jede Woche</item>
+        <item quantity="other">Alle %1$d Wochen</item>
+    </plurals>
+    <plurals name="repeat_every_months">
+        <item quantity="one">Jeden Monat</item>
+        <item quantity="other">Alle %1$d Monate</item>
+    </plurals>
+    <plurals name="unit_days">
+        <item quantity="one">Tag</item>
+        <item quantity="other">Tage</item>
+    </plurals>
+    <plurals name="unit_weeks">
+        <item quantity="one">Woche</item>
+        <item quantity="other">Wochen</item>
+    </plurals>
+    <plurals name="unit_months">
+        <item quantity="one">Monat</item>
+        <item quantity="other">Monate</item>
+    </plurals>
+    <plurals name="duration_days">
+        <item quantity="one">%1$d Tag</item>
+        <item quantity="other">%1$d Tage</item>
+    </plurals>
+    <plurals name="duration_weeks">
+        <item quantity="one">%1$d Woche</item>
+        <item quantity="other">%1$d Wochen</item>
+    </plurals>
+    <plurals name="duration_months">
+        <item quantity="one">%1$d Monat</item>
+        <item quantity="other">%1$d Monate</item>
+    </plurals>
+    <string name="repeat_on_days">%1$s am %2$s</string>
+    <string name="repeat_on_month_days">%1$s am %2$s</string>
+    <string name="repeat_month_end_hint">In kürzeren Monaten fallen Tage nach dem Monatsende auf den letzten Tag.</string>
+    <string name="start_required">Datum wählen</string>
+    <string name="schedule_at_time">um %1$s</string>
+    <string name="schedule_needs_start">Braucht ein Startdatum</string>
+    <plurals name="schedule_window_count">
+        <item quantity="one">%1$d Zeitfenster</item>
+        <item quantity="other">%1$d Zeitfenster</item>
+    </plurals>
+    <string name="editor_add_window">Zeitfenster hinzufügen</string>
+    <string name="editor_remove_window">Zeitfenster entfernen</string>
+    <string name="window_dialog_title">Zeitfenster</string>
+
+    <!-- 4.0: Vorab-Erinnerungen (#11) -->
+    <string name="early_alerts_title">Vorab erinnern</string>
+    <string name="early_alerts_none">Nein</string>
+    <string name="early_alerts_before">%1$s vorher</string>
+    <string name="early_alert_chip">%1$s vorher</string>
+    <string name="early_alerts_hint">Ein Hinweis vor jedem Termin, als Benachrichtigung. Bis zu drei.</string>
+    <string name="early_alerts_interval_too_short">Das Intervall ist zu kurz für eine Vorab-Erinnerung.</string>
+    <string name="notification_early">In %1$s · %2$s</string>
+    <string name="next_at">Nächste: %1$s</string>
+    <string name="moment_day_time">%1$s %2$s</string>
+
+    <!-- 4.0: Signalart und Ton (#10, #12, #13, #9) -->
+    <string name="editor_alert_style">Melden als</string>
+    <string name="alert_style_notification">Benachrichtigung</string>
+    <string name="alert_style_alarm">Wecker</string>
+    <string name="editor_alarm_hint">Ein Wecker füllt den Bildschirm und klingelt, bis du ihn beendest oder schlummerst. Vorab-Erinnerungen kommen weiterhin als Benachrichtigung.</string>
+    <string name="alarm_full_screen_needed">Android braucht dein OK, bevor ein Wecker den Sperrbildschirm überdecken darf.</string>
+    <string name="alarm_full_screen_allow">Erlauben</string>
+    <string name="sound_dialog_title">Ton</string>
+    <string name="sound_default_option">Standard</string>
+    <string name="sound_default_supporting">Benachrichtigungston aus den Einstellungen</string>
+    <string name="sound_default_supporting_alarm">Weckerton aus den Einstellungen</string>
+    <string name="sound_tone">Eigener Ton</string>
+    <string name="sound_tone_choose">Zum Auswählen tippen</string>
+    <string name="sound_tone_change">Ändern</string>
+    <string name="sound_speak">Text vorlesen</string>
+    <string name="sound_speak_supporting">Liest Name und Text laut vor</string>
+    <string name="sound_silent">Lautlos</string>
+    <string name="sound_preview">Anhören</string>
+    <string name="sound_preview_stop">Stopp</string>
+    <string name="sound_preview_phrase">So klingt deine Erinnerung.</string>
+    <string name="alarm_tone_title">Weckerton</string>
+    <string name="snooze_title">Schlummerdauer</string>
+    <string name="snooze_minutes">%1$d Min.</string>
+    <string name="speech_stream_title">Vorlesen in der Lautstärke von</string>
+    <string name="speech_stream_notification">Benachrichtigungen</string>
+    <string name="speech_stream_media">Medien</string>
+    <string name="speech_stream_alarm">Weckern</string>
+    <string name="alarm_ringing">Klingelt</string>
+    <string name="alarm_dismiss">Beenden</string>
+    <string name="alarm_snooze">Schlummern</string>
+    <string name="alarm_snooze_minutes">Schlummern %1$d Min.</string>
+    <string name="channel_alarms_name">Wecker</string>
+    <string name="channel_alarms_description">Erinnerungen im Weckermodus, die klingeln, bis du reagierst</string>
+    <string name="channel_missed_name">Verpasste Erinnerungen</string>
+    <string name="channel_missed_description">Ein leiser Hinweis, wenn ein Wecker oder ein Termin nicht klingeln konnte</string>
+    <string name="channel_sound_name">Erinnerungen · %1$s</string>
+    <string name="channel_sound_vibrate_name">Erinnerungen · %1$s · vibrieren</string>
+    <string name="channel_vibrate_only_name">Erinnerungen · nur vibrieren</string>
+    <string name="channel_sound_description">Erinnerungen mit diesem Ton. reReminder legt pro gewähltem Ton einen solchen Kanal an und entfernt ihn, sobald ihn keine Erinnerung mehr nutzt.</string>
+    <string name="notification_missed_title">Verpasst: %1$s</string>
+    <string name="notification_missed_text">War fällig %1$s</string>
+
+    <!-- 4.0: Liste (#8) -->
+    <string name="alert_mode_sound">Ton an</string>
+    <string name="alert_mode_vibrate">Nur vibrieren</string>
+    <string name="alert_mode_mute">Alle Erinnerungen stumm</string>
+    <string name="sort_title">Sortieren</string>
+    <string name="sort_custom">Eigene Reihenfolge (halten und ziehen)</string>
+    <string name="sort_next">Nächste zuerst</string>
+    <string name="list_deleted">„%1$s“ gelöscht</string>
+    <string name="action_undo">Rückgängig</string>
+    <string name="settings_group_display">Anzeige</string>
+    <string name="compact_list_title">Kompakte Liste</string>
+    <string name="compact_list_summary">Nur Name und wann sie als Nächstes fällig ist</string>
 </resources>

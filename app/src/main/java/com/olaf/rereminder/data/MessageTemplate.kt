@@ -2,6 +2,7 @@ package com.olaf.rereminder.data
 
 import android.content.Context
 import com.olaf.rereminder.R
+import com.olaf.rereminder.utils.TimeLabels
 import java.text.DateFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -32,6 +33,9 @@ object MessageTemplate {
     /**
      * Substitutes every [MessageVariable] in [template]. Unknown `{...}` sequences are left alone
      * so a message like "{not a variable}" survives untouched.
+     *
+     * `{next}` is the next *event* still ahead: for an early alert, the event it announces; for
+     * the event's own alert, the one after it. It carries the day whenever that isn't today.
      */
     fun render(
         context: Context,
@@ -49,37 +53,21 @@ object MessageTemplate {
         for (variable in MessageVariable.entries) {
             if (!result.contains(variable.token)) continue
             val value = when (variable) {
-                MessageVariable.TIME -> formatTime(nowMillis)
+                MessageVariable.TIME -> TimeLabels.clock(nowMillis)
                 MessageVariable.DATE -> DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(nowMillis))
                 MessageVariable.DAY -> Instant.ofEpochMilli(nowMillis)
                     .atZone(zone)
                     .dayOfWeek
                     .getDisplayName(TextStyle.FULL, locale)
 
-                MessageVariable.NAME -> reminder.name.ifBlank {
-                    context.getString(R.string.reminder_default_name)
-                }
-
-                MessageVariable.INTERVAL -> formatInterval(context, reminder.intervalMinutes)
-                MessageVariable.NEXT -> reminder.nextTriggerAfter(nowMillis, zone)
-                    ?.let { formatTime(it) }
+                MessageVariable.NAME -> reminder.displayName(context)
+                MessageVariable.INTERVAL -> TimeLabels.repeatLength(context, reminder.repeat)
+                MessageVariable.NEXT -> reminder.nextEventAfter(nowMillis, zone)
+                    ?.let { TimeLabels.moment(context, it, nowMillis, zone) }
                     .orEmpty()
             }
             result = result.replace(variable.token, value)
         }
         return result
-    }
-
-    private fun formatTime(epochMillis: Long): String =
-        DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(epochMillis))
-
-    private fun formatInterval(context: Context, totalMinutes: Int): String {
-        val hours = totalMinutes / 60
-        val minutes = totalMinutes % 60
-        return when {
-            hours > 0 && minutes > 0 -> context.getString(R.string.duration_hours_minutes, hours, minutes)
-            hours > 0 -> context.getString(R.string.duration_hours, hours)
-            else -> context.getString(R.string.duration_minutes, minutes.coerceAtLeast(1))
-        }
     }
 }

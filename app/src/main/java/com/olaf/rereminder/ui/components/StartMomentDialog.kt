@@ -83,6 +83,8 @@ fun StartMomentDialog(
     initialMillis: Long,
     onDismiss: () -> Unit,
     onConfirm: (Long) -> Unit,
+    /** False for calendar repeats, which need a pinned date and time to count from. */
+    allowImmediate: Boolean = true,
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -184,7 +186,11 @@ fun StartMomentDialog(
                         when (current) {
                             Step.DATE -> DateStep(
                                 zone = zone,
-                                onStartNow = { onConfirm(0L) },
+                                onStartNow = if (allowImmediate) {
+                                    { onConfirm(0L) }
+                                } else {
+                                    null
+                                },
                                 onPickShortcut = { date ->
                                     datePickerState.selectedDateMillis = date.toUtcMillis()
                                     // Selecting alone leaves the grid where it was, so "Next
@@ -265,7 +271,7 @@ fun StartMomentDialog(
 @Composable
 private fun DateStep(
     zone: ZoneId,
-    onStartNow: () -> Unit,
+    onStartNow: (() -> Unit)?,
     onPickShortcut: (LocalDate) -> Unit,
     datePicker: @Composable () -> Unit,
 ) {
@@ -281,10 +287,12 @@ private fun DateStep(
         ) {
             // Un-pinning belongs here, next to the pinning: the editor row would otherwise need
             // a second control that only ever does one thing.
-            SuggestionChip(
-                onClick = { view.tap(); onStartNow() },
-                label = { Text(stringResource(R.string.start_right_away)) },
-            )
+            if (onStartNow != null) {
+                SuggestionChip(
+                    onClick = { view.tap(); onStartNow() },
+                    label = { Text(stringResource(R.string.start_right_away)) },
+                )
+            }
             DateShortcut(R.string.start_today, today, onPickShortcut)
             DateShortcut(R.string.start_tomorrow, today.plusDays(1), onPickShortcut)
             DateShortcut(

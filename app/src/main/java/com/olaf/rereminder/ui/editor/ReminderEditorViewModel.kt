@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import com.olaf.rereminder.data.Reminder
 import com.olaf.rereminder.data.ReminderRepository
+import com.olaf.rereminder.data.Repeat
+import com.olaf.rereminder.data.RepeatUnit
 import com.olaf.rereminder.service.ReminderScheduler
 import com.olaf.rereminder.ui.navigation.Routes
 import com.olaf.rereminder.ui.theme.ReminderAccents
@@ -38,7 +40,7 @@ class ReminderEditorViewModel(
     private val _draft = MutableStateFlow(
         existing ?: Reminder(
             id = NEW_ID,
-            intervalMinutes = DEFAULT_INTERVAL_MINUTES,
+            repeat = Repeat(RepeatUnit.TIME, DEFAULT_INTERVAL_MINUTES),
             // Give each new timer a different accent so the list stays easy to scan.
             colorIndex = repository.reminders.value.size % ReminderAccents.size,
         )
@@ -49,10 +51,6 @@ class ReminderEditorViewModel(
         _draft.value = transform(_draft.value)
     }
 
-    /** A timer with no weekday selected could never fire, so saving is blocked. */
-    val canSave: Boolean
-        get() = _draft.value.days.isNotEmpty() && _draft.value.intervalMinutes > 0
-
     /**
      * Set once the draft has been saved or deleted. The editor keeps taking taps while it animates
      * away, and a second tap on Save for a new timer would otherwise add it twice.
@@ -60,18 +58,34 @@ class ReminderEditorViewModel(
     private var finished = false
 
     fun save() {
-        val draft = _draft.value
-        if (finished || draft.days.isEmpty() || draft.intervalMinutes <= 0) return
+        val draft = _draft.value.let { it.copy(earlyAlerts = it.earlyAlerts.filter { offset -> offset < it.repeat.shortestGapMinutes }) }
+        if (finished || !draft.isSchedulable) return
         finished = true
 
-        val id = if (isNew) {
-            repository.add(draft.copy(nextTriggerAt = 0L)).id
-        } else {
-            repository.update(draft)
-            draft.id
+        if (isNew) {
+            val created = repository.add(draft.copy(anchorMillis = 0L, nextTriggerAt = 0L, nextEventAt = 0L))
+            scheduler.restart(created.id)
+            return
         }
-        // Timing may have changed, so always recompute this one.
-        scheduler.reschedule(id)
+
+        val before = existing!!
+        // Only what the editor shows comes from the draft; the scheduler's bookkeeping and the
+        // list position stay as stored, in case they moved while the editor was open.
+        repository.update(draft.id) { stored ->
+            draft.copy(
+                enabled = stored.enabled,
+                sortIndex = stored.sortIndex,
+                anchorMillis = stored.anchorMillis,
+                nextTriggerAt = stored.nextTriggerAt,
+                nextEventAt = stored.nextEventAt,
+                snoozeUntil = stored.snoozeUntil,
+            )
+        }
+        val timingChanged = before.repeat != draft.repeat ||
+            before.windows != draft.windows ||
+            before.startAtMillis != draft.startAtMillis
+        // A new rhythm starts counting now; renaming a reminder must not reset its countdown.
+        if (timingChanged) scheduler.restart(draft.id) else scheduler.sync()
     }
 
     fun delete() {
