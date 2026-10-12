@@ -4,6 +4,23 @@ All notable changes to reReminder are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.1] — 2026-10-12
+
+A hotfix for time windows.
+
+### Fixed
+
+- **Time windows respect the interval (#15).** A window no longer restarts the reminder at
+  its opening: the interval alone decides when the next event is, and the window only decides
+  whether it may go off. The opening of a window is no longer an event of its own, and early
+  alerts that would land outside the windows — ahead of an opening, or at the end of one
+  window for the first event of the next — stay quiet. To line the events up with a window,
+  set the start to its opening; the editor now says so under the windows.
+- A reminder whose interval never lands inside its windows says so in the list instead of
+  "No days selected".
+- An alarm that cannot take over the screen falls back to a notification with the reminder's
+  sound, not a silent one.
+
 ## [4.0] — 2026-10-10
 
 More ways to repeat, a real alarm mode, sounds that finally do what you pick, and a core
@@ -147,5 +164,7 @@ A major update with a complete rewrite of the app.
 - Complete redesign using Jetpack Compose.
 - More reliable alarms and notifications.
 
+[4.0.1]: https://github.com/ProfessorQuantumUniverse/reReminder/releases/tag/v4.0.1
+[4.0]: https://github.com/ProfessorQuantumUniverse/reReminder/releases/tag/v4.0
 [3.0]: https://github.com/ProfessorQuantumUniverse/reReminder/releases/tag/v3.0
 [2.0]: https://github.com/ProfessorQuantumUniverse/reReminder/releases/tag/v2.0

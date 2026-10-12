@@ -859,7 +859,12 @@ private fun statusText(row: ReminderRow, masterEnabled: Boolean): StatusLine {
     return when {
         !masterEnabled || !reminder.enabled -> StatusLine(stringResource(R.string.paused))
         row.isPending -> StatusLine(stringResource(R.string.not_started_yet))
-        reminder.nextTriggerAt <= 0L -> StatusLine(stringResource(R.string.schedule_never))
+        reminder.nextTriggerAt <= 0L -> StatusLine(
+            stringResource(
+                // Windows filter the interval (#15), so a valid schedule can still never fire.
+                if (reminder.isSchedulable) R.string.schedule_misses_windows else R.string.schedule_never
+            )
+        )
         !row.isWithinSchedule || row.remainingMillis > COUNTDOWN_LIMIT_MILLIS -> StatusLine(
             stringResource(R.string.next_at, TimeLabels.moment(context, reminder.nextTriggerAt))
         )

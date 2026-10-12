@@ -222,6 +222,8 @@
     <string name="editor_add_window">Add time window</string>
     <string name="editor_remove_window">Remove time window</string>
     <string name="window_dialog_title">Time window</string>
+    <string name="editor_window_hint">Reminders keep to the interval and only go off inside these windows. To line them up with a window, set the start to its opening.</string>
+    <string name="schedule_misses_windows">The interval never lands in a time window</string>
 
     <!-- 4.0: early alerts (#11) -->
     <string name="early_alerts_title">Early alerts</string>

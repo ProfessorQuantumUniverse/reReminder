@@ -23,6 +23,7 @@ import com.olaf.rereminder.utils.AlertPlayer
 import com.olaf.rereminder.utils.AlertSound
 import com.olaf.rereminder.utils.NotificationHelper
 import com.olaf.rereminder.utils.PreferenceHelper
+import com.olaf.rereminder.utils.SoundChannels
 import com.olaf.rereminder.utils.VibrationHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -103,9 +104,12 @@ class AlarmService : Service() {
         }.onFailure { Log.e(TAG, "Could not ring as an alarm", it) }.isSuccess
 
         if (!foreground || reminder == null) {
-            // Without the foreground service, a plain notification is the honest fallback.
+            // Without the foreground service, a plain notification is the honest fallback — on
+            // the reminder's sound channel, not the silent one, so the alarm is still heard.
             reminder?.let {
-                NotificationHelper.showReminderNotification(this, it, alarm.message, eventAt, 0)
+                val plan = SoundChannels.plan(it, preferences, early = false)
+                val channelId = SoundChannels.channelFor(this, plan.tone, plan.vibration)
+                NotificationHelper.showReminderNotification(this, it, alarm.message, eventAt, 0, channelId)
             }
             stopRinging()
             return

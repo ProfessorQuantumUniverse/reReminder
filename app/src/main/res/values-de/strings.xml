@@ -220,6 +220,8 @@
     <string name="editor_add_window">Zeitfenster hinzufügen</string>
     <string name="editor_remove_window">Zeitfenster entfernen</string>
     <string name="window_dialog_title">Zeitfenster</string>
+    <string name="editor_window_hint">Erinnerungen folgen dem Intervall und kommen nur innerhalb dieser Zeitfenster. Sollen sie zum Fensterbeginn passen, lege den Start auf diese Uhrzeit.</string>
+    <string name="schedule_misses_windows">Das Intervall trifft nie ein Zeitfenster</string>
 
     <!-- 4.0: Vorab-Erinnerungen (#11) -->
     <string name="early_alerts_title">Vorab erinnern</string>
