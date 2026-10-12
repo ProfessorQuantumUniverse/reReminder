@@ -1,0 +1,6 @@
+reReminder 4.0.1 - hotfix
+
+- Time windows respect the interval (#15): a window no longer restarts the reminder at its opening. The interval alone decides when the next event is; the window only decides whether it may go off.
+- No more early alerts ahead of a window opening or at the end of a window.
+- Tip: to line events up with a window, set the start to its opening.
+- Alarms that cannot cover the screen fall back to a notification with sound.
