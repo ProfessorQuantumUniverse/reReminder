@@ -721,6 +721,13 @@ private fun ScheduleSection(
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.editor_add_window))
                 }
+                // Windows filter the interval rather than restart it (#15); say so where they are set.
+                Text(
+                    text = stringResource(R.string.editor_window_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                )
             }
         }
     }

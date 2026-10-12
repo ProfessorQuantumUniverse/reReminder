@@ -63,17 +63,17 @@ class ScheduleTest {
     private val workHours = TimeWindow(days = Reminder.WEEKDAYS, startMinute = 9 * 60, endMinute = 17 * 60)
 
     @Test
-    fun `outside its window a timer waits for the next opening and fires there`() {
+    fun `outside its window a timer waits for the next tick inside it`() {
         val reminder = Reminder(
             id = 1,
             repeat = every(30),
             windows = listOf(workHours),
-            anchorMillis = at(2026, 9, 1, 12, 0),
+            anchorMillis = at(2026, 9, 22, 10, 7),
         )
-        // Tuesday 20:00 → Wednesday 09:00, then on a 30-minute grid from the opening.
-        val opening = reminder.next(at(2026, 9, 22, 20, 0))
-        assertEquals(at(2026, 9, 23, 9, 0), opening)
-        assertEquals(at(2026, 9, 23, 9, 30), reminder.next(opening!!))
+        // Tuesday 20:00 → Wednesday 09:07: the grid runs on through the night, 09:00 is not on it.
+        val first = reminder.next(at(2026, 9, 22, 20, 0))
+        assertEquals(at(2026, 9, 23, 9, 7), first)
+        assertEquals(at(2026, 9, 23, 9, 37), reminder.next(first!!))
     }
 
     @Test
@@ -84,7 +84,8 @@ class ScheduleTest {
             windows = listOf(workHours),
             anchorMillis = at(2026, 9, 1, 12, 0),
         )
-        // 09:00 + 10 × 45 min = 16:30; 17:15 is past closing, so Friday rolls to Monday.
+        // The grid hits 09:00 every day (32 × 45 min = 24 h). 17:15 is past closing, so Friday
+        // rolls over to Monday's 09:00.
         assertEquals(at(2026, 9, 28, 9, 0), reminder.next(at(2026, 9, 25, 16, 30)))
     }
 
@@ -97,14 +98,14 @@ class ScheduleTest {
     }
 
     @Test
-    fun `a start moment outside the window snaps to the next opening`() {
+    fun `a start moment outside the window waits for the first tick inside it`() {
         val reminder = Reminder(
             id = 1,
             repeat = every(30),
             windows = listOf(workHours),
-            startAtMillis = at(2026, 9, 22, 3, 0),
+            startAtMillis = at(2026, 9, 22, 3, 10),
         )
-        assertEquals(at(2026, 9, 22, 9, 0), reminder.next(at(2026, 9, 21, 20, 0)))
+        assertEquals(at(2026, 9, 22, 9, 10), reminder.next(at(2026, 9, 21, 20, 0)))
     }
 
     @Test
@@ -132,7 +133,7 @@ class ScheduleTest {
     }
 
     @Test
-    fun `several windows per reminder each get their own grid`() {
+    fun `several windows per reminder share one grid`() {
         val weekdays = workHours
         val saturday = TimeWindow(days = setOf(6), startMinute = 10 * 60, endMinute = 12 * 60)
         val reminder = Reminder(
@@ -151,10 +152,103 @@ class ScheduleTest {
     fun `consecutive all-day windows read as one stretch`() {
         val allWeekdays = TimeWindow(days = Reminder.WEEKDAYS, startMinute = 0, endMinute = Reminder.MINUTES_PER_DAY)
         val reminder = Reminder(id = 1, repeat = every(50), windows = listOf(allWeekdays), anchorMillis = at(2026, 9, 1, 12, 0))
-        // Monday 00:00 opens the stretch; 29 × 50 min later it is Tuesday 00:10 — no restart at midnight.
-        val mondayOpening = at(2026, 9, 28, 0, 0)
-        assertEquals(at(2026, 9, 29, 0, 10), reminder.next(at(2026, 9, 28, 23, 50)))
-        assertEquals(mondayOpening, reminder.next(at(2026, 9, 27, 12, 0)))
+        // The grid runs on through the weekend: its first weekday tick is Monday 00:40, not 00:00,
+        // and no restart at midnight either — 28 × 50 min later it is Tuesday 00:00.
+        assertEquals(at(2026, 9, 28, 0, 40), reminder.next(at(2026, 9, 27, 12, 0)))
+        assertEquals(at(2026, 9, 29, 0, 0), reminder.next(at(2026, 9, 28, 23, 50)))
+    }
+
+    // --- Issue #15: windows filter the grid, they never restart it ----------------------------
+
+    @Test
+    fun `a window opening is not an event of its own`() {
+        val reminder = Reminder(
+            id = 1,
+            repeat = every(60),
+            windows = listOf(workHours),
+            anchorMillis = at(2026, 9, 21, 10, 7),
+        )
+        // Monday's last tick is 16:07; Tuesday picks up at 09:07, never at the 09:00 opening.
+        assertEquals(at(2026, 9, 22, 9, 7), reminder.next(at(2026, 9, 21, 16, 7)))
+        assertEquals(at(2026, 9, 22, 10, 7), reminder.next(at(2026, 9, 22, 9, 7)))
+    }
+
+    @Test
+    fun `the interval alone decides when the next event is`() {
+        // Every 7 h from Monday 09:00, Mon–Fri 09:00–17:00: the ticks in between the windows are
+        // skipped, the rhythm is kept.
+        val reminder = Reminder(
+            id = 1,
+            repeat = every(7 * 60),
+            windows = listOf(workHours),
+            startAtMillis = at(2026, 9, 21, 9, 0),
+        )
+        assertEquals(at(2026, 9, 21, 16, 0), reminder.next(at(2026, 9, 21, 9, 0)))
+        // 23:00 and 06:00 are outside.
+        assertEquals(at(2026, 9, 22, 13, 0), reminder.next(at(2026, 9, 21, 16, 0)))
+        // 20:00 and 03:00 are outside.
+        assertEquals(at(2026, 9, 23, 10, 0), reminder.next(at(2026, 9, 22, 13, 0)))
+        // 17:00 is the closing moment, which already counts as outside.
+        assertEquals(at(2026, 9, 24, 14, 0), reminder.next(at(2026, 9, 23, 10, 0)))
+    }
+
+    @Test
+    fun `early alerts outside the windows stay quiet`() {
+        val morning = TimeWindow(days = Reminder.WEEKDAYS, startMinute = 8 * 60, endMinute = 12 * 60)
+        val afternoon = TimeWindow(days = Reminder.WEEKDAYS, startMinute = 13 * 60, endMinute = 17 * 60)
+        val reminder = Reminder(
+            id = 1,
+            repeat = every(120),
+            windows = listOf(morning, afternoon),
+            startAtMillis = at(2026, 9, 21, 8, 0),
+            earlyAlerts = listOf(60),
+        )
+
+        fun alertsFrom(from: Long, count: Int): List<Alert> {
+            var after = from
+            return List(count) { reminder.nextAlertAfter(after, zone)!!.also { after = it.alertAt } }
+        }
+
+        // 07:00 would be ahead of the morning window, 11:00 would announce 12:00 — which falls in
+        // the lunch break and so is no event at all — and 17:00 closes the afternoon.
+        assertEquals(
+            listOf(
+                Alert(at(2026, 9, 21, 8, 0), at(2026, 9, 21, 8, 0), 0),
+                Alert(at(2026, 9, 21, 9, 0), at(2026, 9, 21, 10, 0), 60),
+                Alert(at(2026, 9, 21, 10, 0), at(2026, 9, 21, 10, 0), 0),
+                Alert(at(2026, 9, 21, 13, 0), at(2026, 9, 21, 14, 0), 60),
+                Alert(at(2026, 9, 21, 14, 0), at(2026, 9, 21, 14, 0), 0),
+                Alert(at(2026, 9, 21, 15, 0), at(2026, 9, 21, 16, 0), 60),
+                Alert(at(2026, 9, 21, 16, 0), at(2026, 9, 21, 16, 0), 0),
+                Alert(at(2026, 9, 22, 8, 0), at(2026, 9, 22, 8, 0), 0),
+            ),
+            alertsFrom(at(2026, 9, 20, 20, 0), 8),
+        )
+        assertFalse(reminder.producesAlertAt(at(2026, 9, 22, 7, 0), zone))
+    }
+
+    @Test
+    fun `a grid that rarely meets a short window still finds it`() {
+        // Every 25 h slips an hour a day past a one-hour window: back in it after 24 days.
+        val reminder = Reminder(
+            id = 1,
+            repeat = every(25 * 60),
+            windows = listOf(TimeWindow(days = Reminder.ALL_DAYS, startMinute = 9 * 60, endMinute = 10 * 60)),
+            startAtMillis = at(2026, 9, 21, 9, 0),
+        )
+        assertEquals(at(2026, 10, 16, 9, 0), reminder.next(at(2026, 9, 21, 9, 0)))
+    }
+
+    @Test
+    fun `a grid that never meets its windows gives up`() {
+        val reminder = Reminder(
+            id = 1,
+            repeat = every(24 * 60),
+            windows = listOf(TimeWindow(days = Reminder.ALL_DAYS, startMinute = 12 * 60, endMinute = 13 * 60)),
+            startAtMillis = at(2026, 9, 21, 8, 0),
+        )
+        assertNull(reminder.next(at(2026, 9, 21, 8, 0)))
+        assertNull(reminder.nextAlertAfter(at(2026, 9, 21, 8, 0), zone))
     }
 
     @Test

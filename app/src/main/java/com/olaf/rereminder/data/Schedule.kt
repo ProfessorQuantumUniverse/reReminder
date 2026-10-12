@@ -27,11 +27,11 @@ data class Alert(
  * The schedule math. Everything here is pure — no Android, no clock — so it is covered by plain
  * unit tests, including daylight saving changes.
  *
- * Interval reminders fire on a grid. With no windows the grid starts at the anchor. With windows
- * each stretch of active time (consecutive windows merged) restarts the grid at its opening, so
- * "every 30 min, 09:00–17:00" fires at 09:00, 09:30 … — except in the stretch the anchor falls
- * into, where the grid starts at the anchor instead. A pinned start fires at the start itself;
- * a timer that was simply switched on fires one interval after that.
+ * Interval reminders fire on one grid, `anchor + k·interval`. A pinned start fires at the start
+ * itself; a timer that was simply switched on fires one interval after that. Windows only filter
+ * the grid — they never restart it (#15): a window opening is not an event of its own, and early
+ * alerts that would land outside the windows stay quiet, so nothing sounds while a window is
+ * closed. To line the events up with a window, pin the start to its opening.
  *
  * Calendar reminders are walked date by date in local time at the start moment's time of day.
  */
@@ -64,6 +64,8 @@ fun Reminder.nextAlertAfter(fromMillis: Long, zone: ZoneId = ZoneId.systemDefaul
         if (best != null && event - maxOffsetMillis >= best.alertAt) break
         for (offset in offsets) {
             val alertAt = event - offset * MINUTE
+            // Events always lie inside the windows; an early alert ahead of one may not (#15).
+            if (offset > 0 && !isInsideWindowsAt(alertAt, zone)) continue
             if (alertAt > fromMillis && (best == null || alertAt < best.alertAt)) {
                 best = Alert(alertAt = alertAt, eventAt = event, offsetMinutes = offset)
             }
@@ -82,8 +84,11 @@ fun Reminder.producesAlertAt(alertAt: Long, zone: ZoneId = ZoneId.systemDefault(
  * Whether [epochMillis] falls inside one of the reminder's windows. Reminders without windows
  * (and calendar reminders) are always "inside" once their start moment has passed.
  */
-fun Reminder.isWithinWindowsAt(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): Boolean {
-    if (epochMillis < startAtMillis) return false
+fun Reminder.isWithinWindowsAt(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): Boolean =
+    epochMillis >= startAtMillis && isInsideWindowsAt(epochMillis, zone)
+
+/** Whether [epochMillis] falls inside one of the windows, whatever the start moment. */
+private fun Reminder.isInsideWindowsAt(epochMillis: Long, zone: ZoneId): Boolean {
     if (repeat.isCalendar || windows.isEmpty()) return true
 
     // Checked window by window rather than through the merged spans: the list asks this several
@@ -111,16 +116,21 @@ private fun Reminder.nextIntervalEventAfter(fromMillis: Long, zone: ZoneId): Lon
     // Should never be 0 once the scheduler has run, but a fresh draft has no anchor yet.
     val anchor = effectiveAnchor.takeIf { it > 0L } ?: fromMillis
     val pinned = hasStartMoment
+    val first = gridAfter(anchor, pinned, interval, fromMillis)
 
-    if (activeWindows.isEmpty()) return gridAfter(anchor, pinned, interval, fromMillis)
+    if (activeWindows.isEmpty()) return first
 
-    // Look around whichever is later — now or the anchor — so a far-off start still finds windows.
-    val pivot = maxOf(fromMillis, anchor - 1)
-    for (span in activeSpans(pivot, zone)) {
-        if (span.close <= fromMillis || span.close <= anchor) continue
-        val (base, includeBase) = if (anchor >= span.open) anchor to pinned else span.open to true
-        val event = gridAfter(base, includeBase, interval, fromMillis)
-        if (event < span.close) return event
+    // The first tick from [first] on that lands inside an active stretch. A grid whose interval
+    // keeps slipping past short windows can take a while to hit one, so look well ahead.
+    var pivot = first
+    val horizon = first + WINDOW_SEARCH_DAYS * DAY
+    while (pivot < horizon) {
+        for (span in activeSpans(pivot, zone)) {
+            if (span.close <= first) continue
+            val tick = if (span.open <= first) first else gridAfter(anchor, pinned, interval, span.open - 1)
+            if (tick < span.close) return tick
+        }
+        pivot += SPAN_LOOKAHEAD_DAYS * DAY
     }
     return null
 }
@@ -254,3 +264,7 @@ private const val MINUTE = 60_000L
 private const val MAX_EVENTS_TO_SCAN = 16
 private const val SPAN_LOOKBACK_DAYS = 8L
 private const val SPAN_LOOKAHEAD_DAYS = 9L
+private const val DAY = 24 * 60 * MINUTE
+
+/** How far ahead an interval reminder with windows searches for a tick inside one. */
+private const val WINDOW_SEARCH_DAYS = 400L
