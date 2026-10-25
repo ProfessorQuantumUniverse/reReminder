@@ -12,6 +12,7 @@ import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.olaf.rereminder.R
 import com.olaf.rereminder.data.MessageTemplate
 import com.olaf.rereminder.data.Reminder
@@ -65,9 +66,21 @@ class AlarmService : Service() {
             )
 
             ACTION_DISMISS -> stopRinging()
-            ACTION_SNOOZE -> {
-                _ringing.value?.let { ReminderScheduler(this).snooze(it.reminderId, it.snoozeMinutes) }
-                stopRinging()
+            ACTION_SNOOZE -> snoozeRinging()
+            ACTION_NOTIFICATION_SWIPED -> {
+                val alarm = _ringing.value
+                if (alarm != null &&
+                    intent.data == notificationSwipeUri(alarm)
+                ) {
+                    if (PreferenceHelper(this).isSnoozeOnAlarmSwipe()) {
+                        snoozeRinging()
+                    } else {
+                        stopRinging()
+                    }
+                } else {
+                    Log.i(TAG, "Ignoring notification swipe for an alarm that is no longer ringing")
+                    if (alarm == null) stopRinging()
+                }
             }
 
             // Restarted by the system with no intent: there is nothing left to ring.
@@ -166,6 +179,11 @@ class AlarmService : Service() {
         }
     }
 
+    private fun snoozeRinging() {
+        _ringing.value?.let { ReminderScheduler(this).snooze(it.reminderId, it.snoozeMinutes) }
+        stopRinging()
+    }
+
     private fun stopRinging() {
         val current = player
         player = null
@@ -197,6 +215,16 @@ class AlarmService : Service() {
             .setShowWhen(true)
             .setContentIntent(activityIntent())
             .setFullScreenIntent(activityIntent(), true)
+            .setDeleteIntent(
+                PendingIntent.getService(
+                    this,
+                    0,
+                    Intent(this, AlarmService::class.java)
+                        .setAction(ACTION_NOTIFICATION_SWIPED)
+                        .setData(notificationSwipeUri(alarm)),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+            )
             .addAction(
                 0,
                 getString(R.string.alarm_snooze_minutes, alarm.snoozeMinutes),
@@ -204,6 +232,9 @@ class AlarmService : Service() {
             )
             .addAction(0, getString(R.string.alarm_dismiss), serviceIntent(this, ACTION_DISMISS))
             .build()
+
+    private fun notificationSwipeUri(alarm: RingingAlarm) =
+        "rereminder://alarm/${alarm.reminderId}/${alarm.eventAt}".toUri()
 
     private fun activityIntent(): PendingIntent = PendingIntent.getActivity(
         this,
@@ -232,6 +263,7 @@ class AlarmService : Service() {
         const val AUTO_STOP_MILLIS = 5 * 60_000L
 
         private const val ACTION_START = "com.olaf.rereminder.action.ALARM_START"
+        private const val ACTION_NOTIFICATION_SWIPED = "com.olaf.rereminder.action.ALARM_NOTIFICATION_SWIPED"
         const val ACTION_DISMISS = "com.olaf.rereminder.action.ALARM_DISMISS"
         const val ACTION_SNOOZE = "com.olaf.rereminder.action.ALARM_SNOOZE"
 
