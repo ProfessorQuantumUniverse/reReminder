@@ -78,6 +78,7 @@ Since **3.0** you are no longer limited to a single reminder: run as many indepe
 *   **Respects your phone:** Quiet during Do Not Disturb, vibration only on vibrate. Alarms are the exception, as they should be.
 *   **Reliability check** in the settings: see at a glance whether exact alarms are permitted and whether battery optimisation is holding your reminders back, and jump straight to the right system screen to fix it.
 *   **Self-healing loop:** the next alarm is armed before the notification is even posted, so a single failure can never break the chain.
+*   **Export and import:** Save all reminders and settings to a JSON file wherever you like, through the system file picker, and bring them back on a new phone or after a reinstall. Import adds them to your list, skipping the ones already there, or replaces it.
 
 ### Look & feel
 *   **Material 3** with dynamic colour on Android 12+, edge-to-edge layout, and a full light/dark theme.
@@ -91,7 +92,7 @@ I believe your phone belongs to **you**.
 *   **No Ads**
 *   **No Tracking / Analytics**
 *   **No Unnecessary Permissions**
-*   **Offline First**, everything is stored on your device, nothing ever leaves it.
+*   **Offline First**, everything is stored on your device, and nothing leaves it unless you export it yourself.
 
 ## 📸 Screenshots
 

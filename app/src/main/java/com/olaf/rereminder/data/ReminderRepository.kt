@@ -95,22 +95,27 @@ class ReminderRepository private constructor(private val context: Context) {
         return restored
     }
 
-    /** Applies [transform] to the whole list as one atomic change. */
-    fun mutate(transform: (List<Reminder>) -> List<Reminder>) {
+    /**
+     * Applies [transform] to the whole list as one atomic change. Returns false when the change
+     * could not be saved and so did not happen.
+     */
+    fun mutate(transform: (List<Reminder>) -> List<Reminder>): Boolean {
         synchronized(lock) {
             if (!isLoaded) load()
             if (!isLoaded) {
                 Log.w(TAG, "Storage not available yet, change dropped")
-                return
+                return false
             }
             val current = _reminders.value
             val updated = transform(current)
-            if (updated == current) return
-            if (write(updated)) {
+            if (updated == current) return true
+            return if (write(updated)) {
                 _reminders.value = updated
+                true
             } else {
                 // Keep memory and disk in step; a change that could not be saved did not happen.
                 Log.e(TAG, "Could not save reminders, change dropped")
+                false
             }
         }
     }

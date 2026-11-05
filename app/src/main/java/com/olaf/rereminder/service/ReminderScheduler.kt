@@ -130,7 +130,8 @@ class ReminderScheduler(context: Context) {
         }
     }
 
-    private fun cancelAlarms(id: Int) {
+    /** Drops the alarms armed for [id] without touching the stored reminder. */
+    fun cancelAlarms(id: Int) {
         alarmManager.cancel(remindIntent(id, null))
         cancelSnoozeAlarm(id)
     }

@@ -291,4 +291,53 @@
     <string name="settings_group_display">Anzeige</string>
     <string name="compact_list_title">Kompakte Liste</string>
     <string name="compact_list_summary">Nur Name und wann sie als Nächstes fällig ist</string>
+
+    <!-- Export und Import (#21) -->
+    <string name="settings_group_backup">Sicherung</string>
+    <string name="backup_export_title">Erinnerungen exportieren</string>
+    <string name="backup_export_summary">Alle Erinnerungen und Einstellungen in einer Datei speichern</string>
+    <string name="backup_import_title">Erinnerungen importieren</string>
+    <string name="backup_import_summary">Aus einer zuvor exportierten Datei</string>
+    <string name="backup_hint">Leg die Datei an einen sicheren Ort, etwa in einen Cloud-Ordner. So nimmst du deine Erinnerungen auf ein neues Handy mit oder holst sie nach einer Neuinstallation zurück.</string>
+    <string name="backup_no_picker">Auf diesem Handy gibt es keine Dateiauswahl.</string>
+    <string name="backup_with_settings">Auch die Einstellungen übernehmen</string>
+    <string name="backup_add_action">Hinzufügen</string>
+    <string name="backup_import_action">Importieren</string>
+    <string name="backup_replace_action">Ersetzen</string>
+    <string name="backup_replace_title">Erinnerungen ersetzen?</string>
+    <string name="backup_export_failed">Die Datei konnte nicht gespeichert werden.</string>
+    <string name="backup_import_not_saved">Die importierten Erinnerungen konnten nicht gespeichert werden. Es wurde nichts geändert.</string>
+    <string name="backup_error_not_a_backup">Diese Datei ist kein reReminder-Export.</string>
+    <string name="backup_error_too_new">Diese Datei stammt aus einer neueren reReminder-Version. Aktualisiere die App und versuch es dann noch einmal.</string>
+    <string name="backup_error_empty">In dieser Datei sind keine Erinnerungen.</string>
+    <string name="backup_error_too_large">Diese Datei ist zu groß für einen reReminder-Export.</string>
+    <string name="backup_error_unreadable">Die Datei konnte nicht gelesen werden.</string>
+    <plurals name="backup_import_question">
+        <item quantity="one">%1$d Erinnerung importieren?</item>
+        <item quantity="other">%1$d Erinnerungen importieren?</item>
+    </plurals>
+    <plurals name="backup_import_choice">
+        <item quantity="one">Hinzufügen behält deine Erinnerung und hängt die importierten dahinter an. Ersetzen löscht sie.</item>
+        <item quantity="other">Hinzufügen behält deine %1$d Erinnerungen und hängt die importierten dahinter an. Ersetzen löscht sie.</item>
+    </plurals>
+    <plurals name="backup_duplicates">
+        <item quantity="one">%1$d davon gibt es schon, sie wird nicht doppelt angelegt.</item>
+        <item quantity="other">%1$d davon gibt es schon, sie werden nicht doppelt angelegt.</item>
+    </plurals>
+    <plurals name="backup_replace_body">
+        <item quantity="one">Deine jetzige Erinnerung wird gelöscht, die %2$d aus der Datei treten an ihre Stelle.</item>
+        <item quantity="other">Deine %1$d jetzigen Erinnerungen werden gelöscht, die %2$d aus der Datei treten an ihre Stelle.</item>
+    </plurals>
+    <plurals name="backup_exported">
+        <item quantity="one">%1$d Erinnerung exportiert</item>
+        <item quantity="other">%1$d Erinnerungen exportiert</item>
+    </plurals>
+    <plurals name="backup_imported">
+        <item quantity="one">%1$d Erinnerung importiert.</item>
+        <item quantity="other">%1$d Erinnerungen importiert.</item>
+    </plurals>
+    <plurals name="backup_skipped">
+        <item quantity="one">%1$d gab es schon.</item>
+        <item quantity="other">%1$d gab es schon.</item>
+    </plurals>
 </resources>

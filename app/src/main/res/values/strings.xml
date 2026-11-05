@@ -293,4 +293,53 @@
     <string name="settings_group_display">Display</string>
     <string name="compact_list_title">Compact list</string>
     <string name="compact_list_summary">Only the name and when it is next due</string>
+
+    <!-- Export and import (#21) -->
+    <string name="settings_group_backup">Backup</string>
+    <string name="backup_export_title">Export reminders</string>
+    <string name="backup_export_summary">Save all reminders and settings to a file</string>
+    <string name="backup_import_title">Import reminders</string>
+    <string name="backup_import_summary">From a file you exported before</string>
+    <string name="backup_hint">Keep the file somewhere safe, such as a cloud folder, to bring your reminders to a new phone or back after a reinstall.</string>
+    <string name="backup_no_picker">This phone has no file picker to choose a file with.</string>
+    <string name="backup_with_settings">Also restore the settings</string>
+    <string name="backup_add_action">Add</string>
+    <string name="backup_import_action">Import</string>
+    <string name="backup_replace_action">Replace</string>
+    <string name="backup_replace_title">Replace your reminders?</string>
+    <string name="backup_export_failed">Couldn\'t save the file.</string>
+    <string name="backup_import_not_saved">Couldn\'t save the imported reminders. Nothing was changed.</string>
+    <string name="backup_error_not_a_backup">This file isn\'t a reReminder export.</string>
+    <string name="backup_error_too_new">This file is from a newer version of reReminder. Update the app, then try again.</string>
+    <string name="backup_error_empty">There are no reminders in this file.</string>
+    <string name="backup_error_too_large">This file is too large to be a reReminder export.</string>
+    <string name="backup_error_unreadable">Couldn\'t read the file.</string>
+    <plurals name="backup_import_question">
+        <item quantity="one">Import %1$d reminder?</item>
+        <item quantity="other">Import %1$d reminders?</item>
+    </plurals>
+    <plurals name="backup_import_choice">
+        <item quantity="one">Add keeps your reminder and puts the imported ones after it. Replace deletes it.</item>
+        <item quantity="other">Add keeps your %1$d reminders and puts the imported ones after them. Replace deletes them.</item>
+    </plurals>
+    <plurals name="backup_duplicates">
+        <item quantity="one">%1$d of them is already here and won\'t be added twice.</item>
+        <item quantity="other">%1$d of them are already here and won\'t be added twice.</item>
+    </plurals>
+    <plurals name="backup_replace_body">
+        <item quantity="one">Your current reminder will be deleted, and the %2$d from the file take its place.</item>
+        <item quantity="other">Your %1$d current reminders will be deleted, and the %2$d from the file take their place.</item>
+    </plurals>
+    <plurals name="backup_exported">
+        <item quantity="one">Exported %1$d reminder</item>
+        <item quantity="other">Exported %1$d reminders</item>
+    </plurals>
+    <plurals name="backup_imported">
+        <item quantity="one">Imported %1$d reminder.</item>
+        <item quantity="other">Imported %1$d reminders.</item>
+    </plurals>
+    <plurals name="backup_skipped">
+        <item quantity="one">%1$d was already here.</item>
+        <item quantity="other">%1$d were already here.</item>
+    </plurals>
 </resources>

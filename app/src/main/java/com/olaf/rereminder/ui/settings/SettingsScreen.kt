@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -48,6 +49,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -66,6 +69,9 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.olaf.rereminder.R
+import com.olaf.rereminder.data.BackupError
+import com.olaf.rereminder.service.ReminderBackup
+import com.olaf.rereminder.service.suggestedBackupName
 import com.olaf.rereminder.ui.components.CollapsingHeader
 import com.olaf.rereminder.ui.components.MadeInEurope
 import com.olaf.rereminder.ui.components.SectionCard
@@ -114,6 +120,21 @@ fun SettingsRoute(
         onPauseOrDispose { }
     }
 
+    // Export and import go through the system file picker: no storage permission needed (#21).
+    val exportPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(BACKUP_MIME_TYPE)
+    ) { uri -> uri?.let(viewModel::exportTo) }
+    val importPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> uri?.let(viewModel::readImport) }
+
+    LaunchedEffect(uiState.backupMessage) {
+        val message = uiState.backupMessage ?: return@LaunchedEffect
+        val (text, long) = backupMessageText(context, message)
+        Toast.makeText(context, text, if (long) Toast.LENGTH_LONG else Toast.LENGTH_SHORT).show()
+        viewModel.consumeBackupMessage()
+    }
+
     SettingsScreen(
         uiState = uiState,
         onBack = onBack,
@@ -141,7 +162,53 @@ fun SettingsRoute(
                 Intent(Intent.ACTION_VIEW, uiState.guideUrl.toUri())
             )
         },
+        onExport = {
+            runCatching { exportPicker.launch(suggestedBackupName()) }
+                .onFailure { Toast.makeText(context, R.string.backup_no_picker, Toast.LENGTH_SHORT).show() }
+        },
+        onImport = {
+            // Many file managers don't know .json and call it text or plain bytes.
+            runCatching { importPicker.launch(arrayOf(BACKUP_MIME_TYPE, "text/*", "application/octet-stream")) }
+                .onFailure { Toast.makeText(context, R.string.backup_no_picker, Toast.LENGTH_SHORT).show() }
+        },
+        onConfirmImport = viewModel::confirmImport,
+        onCancelImport = viewModel::cancelImport,
     )
+}
+
+private const val BACKUP_MIME_TYPE = "application/json"
+
+/** What to tell the user after an export or import, and whether it needs reading time. */
+private fun backupMessageText(context: Context, message: BackupMessage): Pair<String, Boolean> {
+    val res = context.resources
+    return when (message) {
+        is BackupMessage.Exported ->
+            res.getQuantityString(R.plurals.backup_exported, message.count, message.count) to false
+
+        BackupMessage.ExportFailed -> context.getString(R.string.backup_export_failed) to true
+
+        is BackupMessage.Imported -> {
+            val imported = res.getQuantityString(R.plurals.backup_imported, message.added, message.added)
+            if (message.skipped > 0) {
+                val skipped = res.getQuantityString(R.plurals.backup_skipped, message.skipped, message.skipped)
+                "$imported $skipped" to true
+            } else {
+                imported to false
+            }
+        }
+
+        is BackupMessage.ImportFailed -> context.getString(
+            when (message.error) {
+                BackupError.NOT_A_BACKUP -> R.string.backup_error_not_a_backup
+                BackupError.TOO_NEW -> R.string.backup_error_too_new
+                BackupError.EMPTY -> R.string.backup_error_empty
+                BackupError.TOO_LARGE -> R.string.backup_error_too_large
+                BackupError.UNREADABLE -> R.string.backup_error_unreadable
+            }
+        ) to true
+
+        BackupMessage.ImportNotSaved -> context.getString(R.string.backup_import_not_saved) to true
+    }
 }
 
 private fun Intent?.pickedUri(): Uri? =
@@ -182,6 +249,10 @@ fun SettingsScreen(
     onFixExactAlarms: () -> Unit,
     onFixBattery: () -> Unit,
     onOpenDkma: () -> Unit,
+    onExport: () -> Unit,
+    onImport: () -> Unit,
+    onConfirmImport: (ReminderBackup.Mode, Boolean) -> Unit,
+    onCancelImport: () -> Unit,
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -289,6 +360,28 @@ fun SettingsScreen(
                     onCheckedChange = onCompactListChange,
                 )
             }
+
+            SectionCard(title = stringResource(R.string.settings_group_backup)) {
+                SectionItem(
+                    title = stringResource(R.string.backup_export_title),
+                    subtitle = stringResource(R.string.backup_export_summary),
+                    onClick = onExport,
+                    enabled = !uiState.backupBusy,
+                )
+                SectionItem(
+                    title = stringResource(R.string.backup_import_title),
+                    subtitle = stringResource(R.string.backup_import_summary),
+                    onClick = onImport,
+                    enabled = !uiState.backupBusy,
+                )
+            }
+
+            Text(
+                text = stringResource(R.string.backup_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
 
             SectionCard(title = stringResource(R.string.settings_group_reliability)) {
                 StatusItem(
@@ -402,6 +495,109 @@ fun SettingsScreen(
         )
     }
 
+    uiState.importPreview?.let { preview ->
+        ImportDialog(preview = preview, onConfirm = onConfirmImport, onDismiss = onCancelImport)
+    }
+}
+
+/**
+ * Asks how to import a checked file. Adding is the safe default; replacing deletes the current
+ * reminders, so it asks once more.
+ */
+@Composable
+private fun ImportDialog(
+    preview: ImportPreview,
+    onConfirm: (ReminderBackup.Mode, Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var withSettings by rememberSaveable { mutableStateOf(true) }
+    var confirmReplace by rememberSaveable { mutableStateOf(false) }
+    val restoreSettings = preview.hasSettings && withSettings
+
+    if (confirmReplace) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(stringResource(R.string.backup_replace_title)) },
+            text = {
+                Text(
+                    pluralStringResource(
+                        R.plurals.backup_replace_body,
+                        preview.currentCount,
+                        preview.currentCount,
+                        preview.count,
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { onConfirm(ReminderBackup.Mode.REPLACE, restoreSettings) }) {
+                    Text(
+                        stringResource(R.string.backup_replace_action),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmReplace = false }) {
+                    Text(stringResource(R.string.action_back))
+                }
+            },
+        )
+        return
+    }
+
+    val hasCurrent = preview.currentCount > 0
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(pluralStringResource(R.plurals.backup_import_question, preview.count, preview.count)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (hasCurrent) {
+                    Text(
+                        pluralStringResource(
+                            R.plurals.backup_import_choice,
+                            preview.currentCount,
+                            preview.currentCount,
+                        )
+                    )
+                    if (preview.duplicates > 0) {
+                        Text(
+                            pluralStringResource(R.plurals.backup_duplicates, preview.duplicates, preview.duplicates),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (preview.hasSettings) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .tappable(pressedScale = 0.98f) { withSettings = !withSettings },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(checked = withSettings, onCheckedChange = { withSettings = it })
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.backup_with_settings))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Row {
+                if (hasCurrent) {
+                    TextButton(onClick = { confirmReplace = true }) {
+                        Text(stringResource(R.string.backup_replace_action))
+                    }
+                }
+                TextButton(onClick = { onConfirm(ReminderBackup.Mode.ADD, restoreSettings) }) {
+                    Text(stringResource(if (hasCurrent) R.string.backup_add_action else R.string.backup_import_action))
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
 }
 
 @Composable
@@ -553,6 +749,10 @@ private fun SettingsScreenPreview() {
             onFixExactAlarms = {},
             onFixBattery = {},
             onOpenDkma = {},
+            onExport = {},
+            onImport = {},
+            onConfirmImport = { _, _ -> },
+            onCancelImport = {},
         )
     }
 }

@@ -2,13 +2,24 @@ package com.olaf.rereminder.ui.settings
 
 import android.app.Application
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.olaf.rereminder.data.BackupContents
+import com.olaf.rereminder.data.BackupError
+import com.olaf.rereminder.data.BackupException
+import com.olaf.rereminder.data.ReminderRepository
+import com.olaf.rereminder.service.ReminderBackup
 import com.olaf.rereminder.utils.PreferenceHelper
 import com.olaf.rereminder.utils.Reliability
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.IOException
 
 /** App-wide alert settings; per-timer options live in the timer editor. */
 data class SettingsUiState(
@@ -27,7 +38,34 @@ data class SettingsUiState(
     val vendorName: String = "",
     /** The dontkillmyapp.com page for this device, or its general guide. */
     val guideUrl: String = "https://dontkillmyapp.com/general",
+    /** True while an export or import is reading or writing its file. */
+    val backupBusy: Boolean = false,
+    /** A checked file waiting for the user to choose how to import it. */
+    val importPreview: ImportPreview? = null,
+    /** The outcome of the last export or import, shown once. */
+    val backupMessage: BackupMessage? = null,
 )
+
+data class ImportPreview(
+    val contents: BackupContents,
+    /** How many reminders there are now; a replace deletes them. */
+    val currentCount: Int,
+    /** How many imported reminders "add" would leave out as already there. */
+    val duplicates: Int,
+) {
+    val count: Int get() = contents.reminders.size
+    val hasSettings: Boolean get() = contents.settings != null
+}
+
+sealed interface BackupMessage {
+    data class Exported(val count: Int) : BackupMessage
+    data object ExportFailed : BackupMessage
+    data class Imported(val added: Int, val skipped: Int) : BackupMessage
+    data class ImportFailed(val error: BackupError) : BackupMessage
+
+    /** The file was fine, but the new list could not be saved; nothing changed. */
+    data object ImportNotSaved : BackupMessage
+}
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -105,5 +143,82 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setCompactList(compact: Boolean) {
         preferences.setCompactList(compact)
         _uiState.update { it.copy(compactList = compact) }
+    }
+
+    // --- Export and import (#21) ----------------------------------------------------------
+
+    private val backup = ReminderBackup(application)
+
+    fun exportTo(uri: Uri) = runBackup {
+        val message = try {
+            BackupMessage.Exported(backup.export(uri))
+        } catch (e: IOException) {
+            Log.e(TAG, "Export failed", e)
+            BackupMessage.ExportFailed
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Export failed", e)
+            BackupMessage.ExportFailed
+        }
+        _uiState.update { it.copy(backupMessage = message) }
+    }
+
+    /** Reads and checks the file; the user then picks how to import it from [ImportPreview]. */
+    fun readImport(uri: Uri) = runBackup {
+        try {
+            val contents = backup.read(uri)
+            val preview = ImportPreview(
+                contents = contents,
+                currentCount = ReminderRepository.get(getApplication()).reminders.value.size,
+                duplicates = backup.duplicatesOf(contents),
+            )
+            _uiState.update { it.copy(importPreview = preview) }
+        } catch (e: BackupException) {
+            Log.w(TAG, "Import file rejected: ${e.error}", e)
+            _uiState.update { it.copy(backupMessage = BackupMessage.ImportFailed(e.error)) }
+        } catch (e: RuntimeException) {
+            // A file picker or provider misbehaving must not take the app down.
+            Log.e(TAG, "Import failed", e)
+            _uiState.update { it.copy(backupMessage = BackupMessage.ImportFailed(BackupError.UNREADABLE)) }
+        }
+    }
+
+    fun confirmImport(mode: ReminderBackup.Mode, withSettings: Boolean) {
+        val preview = _uiState.value.importPreview ?: return
+        _uiState.update { it.copy(importPreview = null) }
+        runBackup {
+            val result = backup.import(preview.contents, mode, withSettings)
+            val message = if (result == null) {
+                BackupMessage.ImportNotSaved
+            } else {
+                BackupMessage.Imported(result.added, result.skipped)
+            }
+            // Imported settings show up on this screen straight away.
+            _uiState.update { readSettings().copy(backupMessage = message) }
+        }
+    }
+
+    fun cancelImport() {
+        _uiState.update { it.copy(importPreview = null) }
+    }
+
+    fun consumeBackupMessage() {
+        _uiState.update { it.copy(backupMessage = null) }
+    }
+
+    /** One file operation at a time, off the main thread. */
+    private fun runBackup(work: suspend () -> Unit) {
+        if (_uiState.value.backupBusy) return
+        _uiState.update { it.copy(backupBusy = true) }
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) { work() }
+            } finally {
+                _uiState.update { it.copy(backupBusy = false) }
+            }
+        }
+    }
+
+    private companion object {
+        const val TAG = "SettingsViewModel"
     }
 }

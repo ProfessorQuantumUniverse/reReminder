@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import android.net.Uri
 import androidx.core.content.edit
 import androidx.core.net.toUri
+import com.olaf.rereminder.data.BackupSettings
 import com.olaf.rereminder.data.Storage
 
 /**
@@ -188,6 +189,33 @@ class PreferenceHelper(context: Context) {
     /** "Don't show again" — suppresses the notice whatever changes later. */
     fun silenceReliabilityPrompt() {
         preferences.edit { putBoolean(KEY_RELIABILITY_SILENCED, true) }
+    }
+
+    /** The settings an export carries along (#21); see [BackupSettings] for what is left out. */
+    fun backupSettings(): BackupSettings = BackupSettings(
+        ringtone = getSelectedRingtone()?.toString().orEmpty(),
+        alarmTone = getAlarmTone()?.toString().orEmpty(),
+        speechStream = getSpeechStream(),
+        snoozeMinutes = getSnoozeMinutes(),
+        snoozeOnAlarmSwipe = isSnoozeOnAlarmSwipe(),
+        vibrationEnabled = isVibrationEnabled(),
+        vibrationPattern = getVibrationPattern(),
+        compactList = isCompactList(),
+        sortMode = getSortMode(),
+    )
+
+    /** Takes over the settings from an import; anything missing or out of range stays as it is. */
+    fun applyBackupSettings(settings: BackupSettings) {
+        settings.ringtone?.let { setSelectedRingtone(it.ifBlank { null }?.toUri()) }
+        settings.alarmTone?.let { setAlarmTone(it.ifBlank { null }?.toUri()) }
+        settings.speechStream?.takeIf { it in setOf(STREAM_MEDIA, STREAM_NOTIFICATION, STREAM_ALARM) }
+            ?.let { setSpeechStream(it) }
+        settings.snoozeMinutes?.takeIf { it in SNOOZE_CHOICES }?.let { setSnoozeMinutes(it) }
+        settings.snoozeOnAlarmSwipe?.let { setSnoozeOnAlarmSwipe(it) }
+        settings.vibrationEnabled?.let { setVibrationEnabled(it) }
+        settings.vibrationPattern?.takeIf { it in 0 until VIBRATION_PATTERN_COUNT }?.let { setVibrationPattern(it) }
+        settings.compactList?.let { setCompactList(it) }
+        settings.sortMode?.takeIf { it == SORT_CUSTOM || it == SORT_NEXT }?.let { setSortMode(it) }
     }
 
     companion object {
