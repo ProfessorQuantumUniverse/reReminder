@@ -12,6 +12,7 @@ import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.olaf.rereminder.R
 import com.olaf.rereminder.data.MessageTemplate
 import com.olaf.rereminder.data.Reminder
@@ -37,7 +38,24 @@ data class RingingAlarm(
     val eventAt: Long,
     val colorIndex: Int,
     val snoozeMinutes: Int,
-)
+) {
+    /** Names this one occurrence in the intents of its notification. */
+    val key: String get() = "rereminder://alarm/$reminderId/$eventAt"
+}
+
+/** What swiping away the alarm notification does. */
+internal enum class SwipeOutcome { DISMISS, SNOOZE, IGNORE }
+
+/**
+ * Decides a swipe on the alarm notification. [swipedKey] is the [RingingAlarm.key] the notification
+ * was built for: a swipe arriving late, after another alarm took over, must not stop the new one.
+ */
+internal fun swipeOutcome(ringing: RingingAlarm?, swipedKey: String?, snoozeOnSwipe: Boolean): SwipeOutcome =
+    when {
+        ringing == null || swipedKey != ringing.key -> SwipeOutcome.IGNORE
+        snoozeOnSwipe -> SwipeOutcome.SNOOZE
+        else -> SwipeOutcome.DISMISS
+    }
 
 /**
  * Rings an alarm-style reminder (#10): full screen over the lock screen, sound and vibration on a
@@ -65,9 +83,19 @@ class AlarmService : Service() {
             )
 
             ACTION_DISMISS -> stopRinging()
-            ACTION_SNOOZE -> {
-                _ringing.value?.let { ReminderScheduler(this).snooze(it.reminderId, it.snoozeMinutes) }
-                stopRinging()
+            ACTION_SNOOZE -> snoozeRinging()
+            // Android 14+ lets the user swipe away even this foreground notification (#20).
+            ACTION_NOTIFICATION_SWIPED -> {
+                val snooze = PreferenceHelper(this).isSnoozeOnAlarmSwipe()
+                when (swipeOutcome(_ringing.value, intent.dataString, snooze)) {
+                    SwipeOutcome.DISMISS -> stopRinging()
+                    SwipeOutcome.SNOOZE -> snoozeRinging()
+                    SwipeOutcome.IGNORE -> {
+                        Log.i(TAG, "Ignoring a swipe on the notification of an earlier alarm")
+                        // Started just for this intent, with nothing ringing: don't linger.
+                        if (_ringing.value == null) stopRinging()
+                    }
+                }
             }
 
             // Restarted by the system with no intent: there is nothing left to ring.
@@ -166,6 +194,11 @@ class AlarmService : Service() {
         }
     }
 
+    private fun snoozeRinging() {
+        _ringing.value?.let { ReminderScheduler(this).snooze(it.reminderId, it.snoozeMinutes) }
+        stopRinging()
+    }
+
     private fun stopRinging() {
         val current = player
         player = null
@@ -197,6 +230,17 @@ class AlarmService : Service() {
             .setShowWhen(true)
             .setContentIntent(activityIntent())
             .setFullScreenIntent(activityIntent(), true)
+            .setDeleteIntent(
+                // The key in the data, not an extra, keeps each alarm's intent apart.
+                PendingIntent.getService(
+                    this,
+                    ACTION_NOTIFICATION_SWIPED.hashCode(),
+                    Intent(this, AlarmService::class.java)
+                        .setAction(ACTION_NOTIFICATION_SWIPED)
+                        .setData(alarm.key.toUri()),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+            )
             .addAction(
                 0,
                 getString(R.string.alarm_snooze_minutes, alarm.snoozeMinutes),
@@ -232,6 +276,7 @@ class AlarmService : Service() {
         const val AUTO_STOP_MILLIS = 5 * 60_000L
 
         private const val ACTION_START = "com.olaf.rereminder.action.ALARM_START"
+        private const val ACTION_NOTIFICATION_SWIPED = "com.olaf.rereminder.action.ALARM_NOTIFICATION_SWIPED"
         const val ACTION_DISMISS = "com.olaf.rereminder.action.ALARM_DISMISS"
         const val ACTION_SNOOZE = "com.olaf.rereminder.action.ALARM_SNOOZE"
 

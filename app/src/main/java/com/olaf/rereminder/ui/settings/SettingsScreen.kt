@@ -129,6 +129,7 @@ fun SettingsRoute(
         },
         onSpeechStreamChange = viewModel::setSpeechStream,
         onSnoozeChange = viewModel::setSnoozeMinutes,
+        onSnoozeOnAlarmSwipeChange = viewModel::setSnoozeOnAlarmSwipe,
         onVibrationEnabledChange = viewModel::setVibrationEnabled,
         onVibrationPatternChange = viewModel::setVibrationPattern,
         onCompactListChange = viewModel::setCompactList,
@@ -174,6 +175,7 @@ fun SettingsScreen(
     onShowAlarmTonePicker: () -> Unit,
     onSpeechStreamChange: (String) -> Unit,
     onSnoozeChange: (Int) -> Unit,
+    onSnoozeOnAlarmSwipeChange: (Boolean) -> Unit,
     onVibrationEnabledChange: (Boolean) -> Unit,
     onVibrationPatternChange: (Int) -> Unit,
     onCompactListChange: (Boolean) -> Unit,
@@ -189,6 +191,7 @@ fun SettingsScreen(
     var showVibrationDialog by rememberSaveable { mutableStateOf(false) }
     var showSpeechDialog by rememberSaveable { mutableStateOf(false) }
     var showSnoozeDialog by rememberSaveable { mutableStateOf(false) }
+    var showAlarmSwipeDialog by rememberSaveable { mutableStateOf(false) }
 
 
     Scaffold(
@@ -245,6 +248,18 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.snooze_minutes, uiState.snoozeMinutes),
                     onClick = { showSnoozeDialog = true },
                 )
+                // Only Android 14+ lets the user swipe away the alarm notification at all (#20).
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    SectionItem(
+                        title = stringResource(R.string.alarm_swipe_title),
+                        subtitle = if (uiState.snoozeOnAlarmSwipe) {
+                            stringResource(R.string.alarm_swipe_snooze, uiState.snoozeMinutes)
+                        } else {
+                            stringResource(R.string.alarm_swipe_dismiss)
+                        },
+                        onClick = { showAlarmSwipeDialog = true },
+                    )
+                }
                 SectionDivider()
                 SectionSwitchRow(
                     title = stringResource(R.string.vibration_enabled_label),
@@ -354,6 +369,22 @@ fun SettingsScreen(
                 showSpeechDialog = false
             },
             onDismiss = { showSpeechDialog = false },
+        )
+    }
+
+    if (showAlarmSwipeDialog) {
+        SingleChoiceDialog(
+            title = stringResource(R.string.alarm_swipe_title),
+            options = listOf(
+                stringResource(R.string.alarm_swipe_dismiss),
+                stringResource(R.string.alarm_swipe_snooze, uiState.snoozeMinutes),
+            ),
+            selectedIndex = if (uiState.snoozeOnAlarmSwipe) 1 else 0,
+            onSelected = {
+                onSnoozeOnAlarmSwipeChange(it == 1)
+                showAlarmSwipeDialog = false
+            },
+            onDismiss = { showAlarmSwipeDialog = false },
         )
     }
 
@@ -515,6 +546,7 @@ private fun SettingsScreenPreview() {
             onShowAlarmTonePicker = {},
             onSpeechStreamChange = {},
             onSnoozeChange = {},
+            onSnoozeOnAlarmSwipeChange = {},
             onVibrationEnabledChange = {},
             onVibrationPatternChange = {},
             onCompactListChange = {},

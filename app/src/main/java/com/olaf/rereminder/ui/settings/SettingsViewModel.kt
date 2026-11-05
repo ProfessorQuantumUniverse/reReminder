@@ -16,6 +16,7 @@ data class SettingsUiState(
     val alarmTone: Uri? = null,
     val speechStream: String = PreferenceHelper.STREAM_NOTIFICATION,
     val snoozeMinutes: Int = PreferenceHelper.DEFAULT_SNOOZE_MINUTES,
+    val snoozeOnAlarmSwipe: Boolean = false,
     val vibrationEnabled: Boolean = true,
     val vibrationPattern: Int = 1,
     val compactList: Boolean = false,
@@ -42,6 +43,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             alarmTone = preferences.getAlarmTone(),
             speechStream = preferences.getSpeechStream(),
             snoozeMinutes = preferences.getSnoozeMinutes(),
+            snoozeOnAlarmSwipe = preferences.isSnoozeOnAlarmSwipe(),
             vibrationEnabled = preferences.isVibrationEnabled(),
             vibrationPattern = preferences.getVibrationPattern(),
             compactList = preferences.isCompactList(),
@@ -83,6 +85,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setSnoozeMinutes(minutes: Int) {
         preferences.setSnoozeMinutes(minutes)
         _uiState.update { it.copy(snoozeMinutes = minutes) }
+    }
+
+    fun setSnoozeOnAlarmSwipe(snooze: Boolean) {
+        preferences.setSnoozeOnAlarmSwipe(snooze)
+        _uiState.update { it.copy(snoozeOnAlarmSwipe = snooze) }
     }
 
     fun setVibrationEnabled(enabled: Boolean) {

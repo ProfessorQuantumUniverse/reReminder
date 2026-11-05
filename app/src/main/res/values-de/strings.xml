@@ -256,6 +256,9 @@
     <string name="sound_preview_phrase">So klingt deine Erinnerung.</string>
     <string name="alarm_tone_title">Weckerton</string>
     <string name="snooze_title">Schlummerdauer</string>
+    <string name="alarm_swipe_title">Klingelnden Wecker wegwischen</string>
+    <string name="alarm_swipe_dismiss">Beendet ihn</string>
+    <string name="alarm_swipe_snooze">Schlummert (%1$d Min.)</string>
     <string name="snooze_minutes">%1$d Min.</string>
     <string name="speech_stream_title">Vorlesen in der Lautstärke von</string>
     <string name="speech_stream_notification">Benachrichtigungen</string>

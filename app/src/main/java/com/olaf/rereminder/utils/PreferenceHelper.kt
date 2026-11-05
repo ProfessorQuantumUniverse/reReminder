@@ -122,6 +122,13 @@ class PreferenceHelper(context: Context) {
         preferences.edit { putInt(KEY_SNOOZE_MINUTES, minutes) }
     }
 
+    fun isSnoozeOnAlarmSwipe(): Boolean =
+        preferences.getBoolean(KEY_SNOOZE_ON_ALARM_SWIPE, false)
+
+    fun setSnoozeOnAlarmSwipe(snooze: Boolean) {
+        preferences.edit { putBoolean(KEY_SNOOZE_ON_ALARM_SWIPE, snooze) }
+    }
+
     fun isCompactList(): Boolean =
         preferences.getBoolean(KEY_COMPACT_LIST, false)
 
@@ -195,6 +202,7 @@ class PreferenceHelper(context: Context) {
         private const val KEY_ALERT_MODE = "alert_mode"
         private const val KEY_SOUND_DEFAULTS_MOVED = "sound_defaults_moved_to_reminders"
         private const val KEY_SNOOZE_MINUTES = "snooze_minutes"
+        private const val KEY_SNOOZE_ON_ALARM_SWIPE = "snooze_on_alarm_swipe"
         private const val KEY_COMPACT_LIST = "compact_list"
         private const val KEY_SORT_MODE = "sort_mode"
         private const val KEY_DKMA_SHOWN = "dontkillmyapp_shown"
