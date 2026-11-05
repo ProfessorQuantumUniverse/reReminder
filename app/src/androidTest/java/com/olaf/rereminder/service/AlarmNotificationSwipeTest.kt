@@ -22,7 +22,6 @@ import com.olaf.rereminder.utils.PreferenceHelper
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -30,6 +29,13 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
+/**
+ * Fires the ringing alarm notification's real delete intent, end to end. Which swipes count is
+ * decided in [swipeOutcome] and covered by `SwipeOutcomeTest`.
+ *
+ * Works on the app's real data: it adds a reminder and changes settings, and puts both back
+ * afterwards. Run it on an emulator, not on a phone in daily use.
+ */
 @RunWith(AndroidJUnit4::class)
 class AlarmNotificationSwipeTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -118,22 +124,6 @@ class AlarmNotificationSwipeTest {
         assertTrue(snoozeUntil >= beforeSwipe + 10 * 60_000L)
         assertTrue(snoozeUntil <= afterSwipe + 10 * 60_000L)
         await("foreground notification removed") { alarmNotification() == null }
-    }
-
-    @Test
-    fun delayedSwipeDoesNotStopNewOccurrenceOfSameReminder() {
-        val reminder = addReminder()
-        val firstEvent = System.currentTimeMillis()
-        val oldNotification = ring(reminder.id, firstEvent)
-        val newNotification = ring(reminder.id, firstEvent + 1)
-        assertNotEquals(oldNotification, newNotification)
-
-        oldNotification.send()
-        instrumentation.waitForIdleSync()
-
-        assertEquals(firstEvent + 1, AlarmService.ringing.value?.eventAt)
-        newNotification.send()
-        await("current notification dismissed alarm") { AlarmService.ringing.value == null }
     }
 
     @Test

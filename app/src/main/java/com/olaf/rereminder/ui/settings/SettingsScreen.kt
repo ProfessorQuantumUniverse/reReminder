@@ -248,17 +248,18 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.snooze_minutes, uiState.snoozeMinutes),
                     onClick = { showSnoozeDialog = true },
                 )
-                SectionItem(
-                    title = stringResource(R.string.alarm_swipe_title),
-                    subtitle = stringResource(
-                        if (uiState.snoozeOnAlarmSwipe) {
-                            R.string.alarm_swipe_snooze
+                // Only Android 14+ lets the user swipe away the alarm notification at all (#20).
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    SectionItem(
+                        title = stringResource(R.string.alarm_swipe_title),
+                        subtitle = if (uiState.snoozeOnAlarmSwipe) {
+                            stringResource(R.string.alarm_swipe_snooze, uiState.snoozeMinutes)
                         } else {
-                            R.string.alarm_swipe_dismiss
-                        }
-                    ),
-                    onClick = { showAlarmSwipeDialog = true },
-                )
+                            stringResource(R.string.alarm_swipe_dismiss)
+                        },
+                        onClick = { showAlarmSwipeDialog = true },
+                    )
+                }
                 SectionDivider()
                 SectionSwitchRow(
                     title = stringResource(R.string.vibration_enabled_label),
@@ -376,7 +377,7 @@ fun SettingsScreen(
             title = stringResource(R.string.alarm_swipe_title),
             options = listOf(
                 stringResource(R.string.alarm_swipe_dismiss),
-                stringResource(R.string.alarm_swipe_snooze),
+                stringResource(R.string.alarm_swipe_snooze, uiState.snoozeMinutes),
             ),
             selectedIndex = if (uiState.snoozeOnAlarmSwipe) 1 else 0,
             onSelected = {

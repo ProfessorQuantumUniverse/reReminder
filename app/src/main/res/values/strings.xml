@@ -258,9 +258,9 @@
     <string name="sound_preview_phrase">This is how your reminder will sound.</string>
     <string name="alarm_tone_title">Alarm sound</string>
     <string name="snooze_title">Snooze length</string>
-    <string name="alarm_swipe_title">Alarm notification swipe action</string>
-    <string name="alarm_swipe_dismiss">Dismiss the alarm</string>
-    <string name="alarm_swipe_snooze">Snooze for the configured snooze length</string>
+    <string name="alarm_swipe_title">Swiping away a ringing alarm</string>
+    <string name="alarm_swipe_dismiss">Dismisses it</string>
+    <string name="alarm_swipe_snooze">Snoozes it (%1$d min)</string>
     <string name="snooze_minutes">%1$d min</string>
     <string name="speech_stream_title">Speak at the volume of</string>
     <string name="speech_stream_notification">Notifications</string>

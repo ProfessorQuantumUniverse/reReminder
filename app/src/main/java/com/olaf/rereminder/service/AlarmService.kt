@@ -38,7 +38,24 @@ data class RingingAlarm(
     val eventAt: Long,
     val colorIndex: Int,
     val snoozeMinutes: Int,
-)
+) {
+    /** Names this one occurrence in the intents of its notification. */
+    val key: String get() = "rereminder://alarm/$reminderId/$eventAt"
+}
+
+/** What swiping away the alarm notification does. */
+internal enum class SwipeOutcome { DISMISS, SNOOZE, IGNORE }
+
+/**
+ * Decides a swipe on the alarm notification. [swipedKey] is the [RingingAlarm.key] the notification
+ * was built for: a swipe arriving late, after another alarm took over, must not stop the new one.
+ */
+internal fun swipeOutcome(ringing: RingingAlarm?, swipedKey: String?, snoozeOnSwipe: Boolean): SwipeOutcome =
+    when {
+        ringing == null || swipedKey != ringing.key -> SwipeOutcome.IGNORE
+        snoozeOnSwipe -> SwipeOutcome.SNOOZE
+        else -> SwipeOutcome.DISMISS
+    }
 
 /**
  * Rings an alarm-style reminder (#10): full screen over the lock screen, sound and vibration on a
@@ -67,19 +84,17 @@ class AlarmService : Service() {
 
             ACTION_DISMISS -> stopRinging()
             ACTION_SNOOZE -> snoozeRinging()
+            // Android 14+ lets the user swipe away even this foreground notification (#20).
             ACTION_NOTIFICATION_SWIPED -> {
-                val alarm = _ringing.value
-                if (alarm != null &&
-                    intent.data == notificationSwipeUri(alarm)
-                ) {
-                    if (PreferenceHelper(this).isSnoozeOnAlarmSwipe()) {
-                        snoozeRinging()
-                    } else {
-                        stopRinging()
+                val snooze = PreferenceHelper(this).isSnoozeOnAlarmSwipe()
+                when (swipeOutcome(_ringing.value, intent.dataString, snooze)) {
+                    SwipeOutcome.DISMISS -> stopRinging()
+                    SwipeOutcome.SNOOZE -> snoozeRinging()
+                    SwipeOutcome.IGNORE -> {
+                        Log.i(TAG, "Ignoring a swipe on the notification of an earlier alarm")
+                        // Started just for this intent, with nothing ringing: don't linger.
+                        if (_ringing.value == null) stopRinging()
                     }
-                } else {
-                    Log.i(TAG, "Ignoring notification swipe for an alarm that is no longer ringing")
-                    if (alarm == null) stopRinging()
                 }
             }
 
@@ -216,12 +231,13 @@ class AlarmService : Service() {
             .setContentIntent(activityIntent())
             .setFullScreenIntent(activityIntent(), true)
             .setDeleteIntent(
+                // The key in the data, not an extra, keeps each alarm's intent apart.
                 PendingIntent.getService(
                     this,
-                    0,
+                    ACTION_NOTIFICATION_SWIPED.hashCode(),
                     Intent(this, AlarmService::class.java)
                         .setAction(ACTION_NOTIFICATION_SWIPED)
-                        .setData(notificationSwipeUri(alarm)),
+                        .setData(alarm.key.toUri()),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                 )
             )
@@ -232,9 +248,6 @@ class AlarmService : Service() {
             )
             .addAction(0, getString(R.string.alarm_dismiss), serviceIntent(this, ACTION_DISMISS))
             .build()
-
-    private fun notificationSwipeUri(alarm: RingingAlarm) =
-        "rereminder://alarm/${alarm.reminderId}/${alarm.eventAt}".toUri()
 
     private fun activityIntent(): PendingIntent = PendingIntent.getActivity(
         this,

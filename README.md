@@ -65,7 +65,7 @@ Since **3.0** you are no longer limited to a single reminder: run as many indepe
 
 ### Alerts
 *   **Notification or alarm:** A gentle notification, or a full-screen alarm that keeps ringing until you dismiss or snooze it.
-*   **Swipe to stop an alarm:** Swiping away a ringing alarm notification dismisses the alarm by default. In Settings, choose **Alarm notification swipe action** to snooze instead, using your configured snooze length.
+*   **Swipe to stop an alarm:** On Android 14 and later you can swipe away a ringing alarm's notification; that dismisses the alarm. Under **Swiping away a ringing alarm** in Settings it can snooze instead, for your snooze length.
 *   **A sound per reminder:** The default, a tone of its own, the message read aloud (text-to-speech), or silence.
 *   **Sound, vibrate, mute:** One tap above the list switches every reminder between sounding, vibrating only and silence.
 *   **Speak at the right volume:** Spoken reminders can follow the notification, media or alarm volume, so a muted video doesn't swallow them.
