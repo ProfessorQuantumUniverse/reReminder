@@ -4,6 +4,29 @@ All notable changes to reReminder are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1] — 2026-11-05
+
+Back up your reminders, and alarms that can't get stuck ringing.
+
+### Added
+
+- **Export and import (#21).** Settings → Backup saves all reminders and settings to a JSON
+  file wherever you like, through the system file picker, so no storage permission is
+  needed. Importing adds the reminders to your list, leaving out the ones already there, or
+  replaces the list after asking once more; the settings come along if you want. Files are
+  checked before anything changes: a file that isn't an export, comes from a newer version or
+  holds no reminders is turned down with a clear message, and values a hand edit broke are put
+  back into range. Tones that don't exist on the new phone fall back to the default. The
+  app's own `reminders.json` and the 3.x format can be imported too.
+- **Swiping away a ringing alarm (#20).** Android 14 and later let you swipe away an alarm's
+  notification. That used to leave the alarm ringing with no way back to it; now it dismisses
+  the alarm, or snoozes it if you choose so under Settings → Alerts. Thanks to @punch-github.
+
+### Fixed
+
+- A tap on Dismiss or Snooze, or a swipe, that lands just after another alarm took over no
+  longer stops or snoozes the new alarm instead of the one it was meant for.
+
 ## [4.0.1] — 2026-10-12
 
 A hotfix for time windows.
@@ -164,6 +187,7 @@ A major update with a complete rewrite of the app.
 - Complete redesign using Jetpack Compose.
 - More reliable alarms and notifications.
 
+[4.1]: https://github.com/ProfessorQuantumUniverse/reReminder/releases/tag/v4.1
 [4.0.1]: https://github.com/ProfessorQuantumUniverse/reReminder/releases/tag/v4.0.1
 [4.0]: https://github.com/ProfessorQuantumUniverse/reReminder/releases/tag/v4.0
 [3.0]: https://github.com/ProfessorQuantumUniverse/reReminder/releases/tag/v3.0

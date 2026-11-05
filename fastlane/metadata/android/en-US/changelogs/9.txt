@@ -1,0 +1,5 @@
+reReminder 4.1
+
+- Export and import (#21): save all reminders and settings to a file, and bring them back on a new phone or after a reinstall. Import adds to your list, skipping ones already there, or replaces it.
+- Android 14+: swiping away a ringing alarm's notification dismisses it, or snoozes it if you choose so in Settings (#20).
+- Dismiss and Snooze can no longer hit a newer alarm that just took over.
