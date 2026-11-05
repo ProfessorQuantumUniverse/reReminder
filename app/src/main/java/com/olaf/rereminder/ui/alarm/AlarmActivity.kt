@@ -84,8 +84,8 @@ class AlarmActivity : ComponentActivity() {
                 alarm?.let { ringing ->
                     AlarmScreen(
                         alarm = ringing,
-                        onSnooze = { AlarmService.send(this, AlarmService.ACTION_SNOOZE) },
-                        onDismiss = { AlarmService.send(this, AlarmService.ACTION_DISMISS) },
+                        onSnooze = { AlarmService.send(this, AlarmService.ACTION_SNOOZE, ringing) },
+                        onDismiss = { AlarmService.send(this, AlarmService.ACTION_DISMISS, ringing) },
                     )
                 }
             }

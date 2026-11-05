@@ -31,7 +31,7 @@ import org.junit.runner.RunWith
 
 /**
  * Fires the ringing alarm notification's real delete intent, end to end. Which swipes count is
- * decided in [swipeOutcome] and covered by `SwipeOutcomeTest`.
+ * decided in [alarmOutcome] and covered by `AlarmOutcomeTest`.
  *
  * Works on the app's real data: it adds a reminder and changes settings, and puts both back
  * afterwards. Run it on an emulator, not on a phone in daily use.

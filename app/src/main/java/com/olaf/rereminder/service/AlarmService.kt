@@ -39,23 +39,39 @@ data class RingingAlarm(
     val colorIndex: Int,
     val snoozeMinutes: Int,
 ) {
-    /** Names this one occurrence in the intents of its notification. */
+    /** Names this one occurrence in the intents of its screen and notification. */
     val key: String get() = "rereminder://alarm/$reminderId/$eventAt"
 }
 
-/** What swiping away the alarm notification does. */
-internal enum class SwipeOutcome { DISMISS, SNOOZE, IGNORE }
+/** How the user answered a ringing alarm: a dismiss or snooze button, or a swipe on its notification. */
+internal enum class AlarmAnswer { DISMISS, SNOOZE, SWIPE }
+
+/** What the service does about an [AlarmAnswer]. */
+internal enum class AlarmOutcome { DISMISS, SNOOZE, IGNORE }
 
 /**
- * Decides a swipe on the alarm notification. [swipedKey] is the [RingingAlarm.key] the notification
- * was built for: a swipe arriving late, after another alarm took over, must not stop the new one.
+ * Decides an answer to the alarm. [targetKey] is the [RingingAlarm.key] of the alarm the screen or
+ * notification was showing: an answer that arrives late, after another alarm took over, must not
+ * stop the new one. Without a key a button goes to whatever rings; a swipe always names its alarm.
  */
-internal fun swipeOutcome(ringing: RingingAlarm?, swipedKey: String?, snoozeOnSwipe: Boolean): SwipeOutcome =
-    when {
-        ringing == null || swipedKey != ringing.key -> SwipeOutcome.IGNORE
-        snoozeOnSwipe -> SwipeOutcome.SNOOZE
-        else -> SwipeOutcome.DISMISS
+internal fun alarmOutcome(
+    answer: AlarmAnswer,
+    ringing: RingingAlarm?,
+    targetKey: String?,
+    snoozeOnSwipe: Boolean,
+): AlarmOutcome = when {
+    ringing == null -> AlarmOutcome.IGNORE
+    targetKey != null && targetKey != ringing.key -> AlarmOutcome.IGNORE
+    else -> when (answer) {
+        AlarmAnswer.DISMISS -> AlarmOutcome.DISMISS
+        AlarmAnswer.SNOOZE -> AlarmOutcome.SNOOZE
+        AlarmAnswer.SWIPE -> when {
+            targetKey == null -> AlarmOutcome.IGNORE
+            snoozeOnSwipe -> AlarmOutcome.SNOOZE
+            else -> AlarmOutcome.DISMISS
+        }
     }
+}
 
 /**
  * Rings an alarm-style reminder (#10): full screen over the lock screen, sound and vibration on a
@@ -82,21 +98,10 @@ class AlarmService : Service() {
                 eventAt = intent.getLongExtra(ReminderScheduler.EXTRA_EVENT_AT, System.currentTimeMillis()),
             )
 
-            ACTION_DISMISS -> stopRinging()
-            ACTION_SNOOZE -> snoozeRinging()
+            ACTION_DISMISS -> answer(AlarmAnswer.DISMISS, intent.dataString)
+            ACTION_SNOOZE -> answer(AlarmAnswer.SNOOZE, intent.dataString)
             // Android 14+ lets the user swipe away even this foreground notification (#20).
-            ACTION_NOTIFICATION_SWIPED -> {
-                val snooze = PreferenceHelper(this).isSnoozeOnAlarmSwipe()
-                when (swipeOutcome(_ringing.value, intent.dataString, snooze)) {
-                    SwipeOutcome.DISMISS -> stopRinging()
-                    SwipeOutcome.SNOOZE -> snoozeRinging()
-                    SwipeOutcome.IGNORE -> {
-                        Log.i(TAG, "Ignoring a swipe on the notification of an earlier alarm")
-                        // Started just for this intent, with nothing ringing: don't linger.
-                        if (_ringing.value == null) stopRinging()
-                    }
-                }
-            }
+            ACTION_NOTIFICATION_SWIPED -> answer(AlarmAnswer.SWIPE, intent.dataString)
 
             // Restarted by the system with no intent: there is nothing left to ring.
             else -> stopRinging()
@@ -194,6 +199,19 @@ class AlarmService : Service() {
         }
     }
 
+    private fun answer(answer: AlarmAnswer, targetKey: String?) {
+        val snoozeOnSwipe = answer == AlarmAnswer.SWIPE && PreferenceHelper(this).isSnoozeOnAlarmSwipe()
+        when (alarmOutcome(answer, _ringing.value, targetKey, snoozeOnSwipe)) {
+            AlarmOutcome.DISMISS -> stopRinging()
+            AlarmOutcome.SNOOZE -> snoozeRinging()
+            AlarmOutcome.IGNORE -> {
+                Log.i(TAG, "Ignoring $answer meant for an alarm that is no longer ringing")
+                // Started just for this intent, with nothing ringing: don't linger.
+                if (_ringing.value == null) stopRinging()
+            }
+        }
+    }
+
     private fun snoozeRinging() {
         _ringing.value?.let { ReminderScheduler(this).snooze(it.reminderId, it.snoozeMinutes) }
         stopRinging()
@@ -230,24 +248,22 @@ class AlarmService : Service() {
             .setShowWhen(true)
             .setContentIntent(activityIntent())
             .setFullScreenIntent(activityIntent(), true)
-            .setDeleteIntent(
-                // The key in the data, not an extra, keeps each alarm's intent apart.
-                PendingIntent.getService(
-                    this,
-                    ACTION_NOTIFICATION_SWIPED.hashCode(),
-                    Intent(this, AlarmService::class.java)
-                        .setAction(ACTION_NOTIFICATION_SWIPED)
-                        .setData(alarm.key.toUri()),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                )
-            )
+            .setDeleteIntent(answerIntent(ACTION_NOTIFICATION_SWIPED, alarm))
             .addAction(
                 0,
                 getString(R.string.alarm_snooze_minutes, alarm.snoozeMinutes),
-                serviceIntent(this, ACTION_SNOOZE),
+                answerIntent(ACTION_SNOOZE, alarm),
             )
-            .addAction(0, getString(R.string.alarm_dismiss), serviceIntent(this, ACTION_DISMISS))
+            .addAction(0, getString(R.string.alarm_dismiss), answerIntent(ACTION_DISMISS, alarm))
             .build()
+
+    /** Names [alarm] in the data, not an extra, so each alarm's intents stay apart. */
+    private fun answerIntent(action: String, alarm: RingingAlarm): PendingIntent = PendingIntent.getService(
+        this,
+        action.hashCode(),
+        Intent(this, AlarmService::class.java).setAction(action).setData(alarm.key.toUri()),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
 
     private fun activityIntent(): PendingIntent = PendingIntent.getActivity(
         this,
@@ -297,18 +313,16 @@ class AlarmService : Service() {
                 .isSuccess
         }
 
-        fun serviceIntent(context: Context, action: String): PendingIntent = PendingIntent.getService(
-            context,
-            action.hashCode(),
-            Intent(context, AlarmService::class.java).setAction(action),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-
-        /** For the alarm screen's buttons; the service is already in the foreground then. */
-        fun send(context: Context, action: String) {
-            runCatching {
-                context.startService(Intent(context, AlarmService::class.java).setAction(action))
-            }.onFailure { Log.w(TAG, "Could not reach the alarm service", it) }
+        /**
+         * For the alarm screen's buttons; the service is already in the foreground then. Pass the
+         * [alarm] the screen shows, so a tap that lands just after another alarm took over is
+         * ignored; without one the action goes to whatever rings.
+         */
+        fun send(context: Context, action: String, alarm: RingingAlarm? = null) {
+            val intent = Intent(context, AlarmService::class.java).setAction(action)
+            alarm?.let { intent.data = it.key.toUri() }
+            runCatching { context.startService(intent) }
+                .onFailure { Log.w(TAG, "Could not reach the alarm service", it) }
         }
     }
 }
