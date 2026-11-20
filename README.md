@@ -56,6 +56,7 @@ Since **3.0** you are no longer limited to a single reminder: run as many indepe
 
 ### Repeat the way you need
 *   **Minutes to months:** Every 20 minutes, every 2 days, every 2 weeks on Mon and Thu, or every 3 months on the 15th.
+*   **Several times a day:** A day, week or month repeat can carry up to twelve times of day — twice a day at 07:00 and 19:00, or Thu and Sun at 15:00 and 17:00, as one reminder.
 *   **Early alerts:** Get a heads-up 10 and 5 minutes (or up to a day) before each event.
 *   **Start when you want:** Pin the first alert to a date and time, or simply start right away.
 

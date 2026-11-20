@@ -166,6 +166,17 @@ object Backup {
             every = reminder.repeat.every.coerceAtLeast(1),
             weekdays = reminder.repeat.weekdays.filterTo(sortedSetOf()) { it in 1..7 },
             monthDays = reminder.repeat.monthDays.filterTo(sortedSetOf()) { it in 1..31 },
+            // Times of day only mean something for a calendar repeat; an interval timer's times
+            // are its ticks, so carrying any along would only make two reminders look different.
+            timesOfDay = if (reminder.repeat.isCalendar) {
+                reminder.repeat.timesOfDay
+                    .filter { it in 0 until Reminder.MINUTES_PER_DAY }
+                    .sorted()
+                    .take(Reminder.MAX_TIMES_PER_DAY)
+                    .toSortedSet()
+            } else {
+                emptySet()
+            },
         )
         val windows = reminder.windows.map { window ->
             window.copy(

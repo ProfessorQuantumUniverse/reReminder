@@ -146,6 +146,33 @@ class BackupTest {
     }
 
     @Test
+    fun `times of day are brought back into range and capped`() {
+        val broken = Reminder(
+            id = 1,
+            repeat = Repeat(
+                RepeatUnit.DAYS,
+                1,
+                timesOfDay = setOf(-30, 7 * 60, Reminder.MINUTES_PER_DAY, 19 * 60),
+            ),
+        )
+
+        val clean = Backup.sanitize(broken)
+
+        assertEquals(setOf(7 * 60, 19 * 60), clean.repeat.timesOfDay)
+        assertEquals(
+            Reminder.MAX_TIMES_PER_DAY,
+            Backup.sanitize(broken.copy(repeat = broken.repeat.copy(timesOfDay = (0..23).map { it * 60 }.toSet())))
+                .repeat.timesOfDay.size,
+        )
+    }
+
+    @Test
+    fun `times of day on an interval timer are dropped`() {
+        val interval = Reminder(id = 1, repeat = Repeat(RepeatUnit.TIME, 30, timesOfDay = setOf(7 * 60)))
+        assertEquals(emptySet<Int>(), Backup.sanitize(interval).repeat.timesOfDay)
+    }
+
+    @Test
     fun `early alerts longer than the gap between events are dropped`() {
         val everyHalfHour = Reminder(id = 1, repeat = Repeat(RepeatUnit.TIME, 30), earlyAlerts = listOf(10, 30, 45))
         assertEquals(listOf(10), Backup.sanitize(everyHalfHour).earlyAlerts)

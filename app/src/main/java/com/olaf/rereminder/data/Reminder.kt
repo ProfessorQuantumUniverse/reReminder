@@ -21,8 +21,12 @@ enum class RepeatUnit {
  * How often a reminder comes round.
  *
  * [RepeatUnit.TIME] counts minutes ("every 1 h 30 min"). The calendar units count days, weeks or
- * months and always fire at the start moment's time of day, in local time — so "every day at
- * 09:00" stays at 09:00 across daylight saving changes.
+ * months: they pick the dates, and [timesOfDay] picks the times of day on each of them, in local
+ * time — so "every day at 09:00" stays at 09:00 across daylight saving changes.
+ *
+ * Dates and times are kept apart on purpose. One rule then covers every calendar unit: "twice a
+ * day at 07:00 and 19:00" and "every week on Thu and Sun at 15:00 and 17:00" are the same model
+ * with a different unit, and adding a time never disturbs the dates it fires on.
  */
 @Serializable
 data class Repeat(
@@ -33,15 +37,46 @@ data class Repeat(
     val weekdays: Set<Int> = emptySet(),
     /** [RepeatUnit.MONTHS] only: days of the month. 29–31 fall back to the last day of shorter months. */
     val monthDays: Set<Int> = emptySet(),
+    /**
+     * Calendar units only: the times of day to fire at on every date the rule picks, as minutes
+     * from local midnight — so 07:00 and 19:00 is `{420, 1140}`. Empty means the start moment's
+     * own time of day, which is what every calendar repeat did before times could be picked.
+     */
+    val timesOfDay: Set<Int> = emptySet(),
 ) {
     val isCalendar: Boolean
         get() = unit != RepeatUnit.TIME
+
+    /** The times of day that can actually match, in order; an interval repeat has none. */
+    val activeTimes: List<Int>
+        get() = if (isCalendar) {
+            timesOfDay.filter { it in 0 until Reminder.MINUTES_PER_DAY }.sorted()
+        } else {
+            emptyList()
+        }
+
+    /** True when the repeat names its own times, so the start moment only picks the first day. */
+    val hasOwnTimes: Boolean
+        get() = activeTimes.isNotEmpty()
 
     /**
      * The shortest gap there can be between two events, in minutes. An early alert must be
      * shorter than this, or it would land before the previous event.
      */
     val shortestGapMinutes: Long
+        get() {
+            val betweenDates = shortestDateGapMinutes
+            val times = activeTimes
+            if (times.size < 2) return betweenDates
+            // Several times a day: the closest two events are either two times on the same date,
+            // or the last time of one date and the first time of the next one.
+            val gaps = times.zipWithNext { a, b -> (b - a).toLong() } +
+                (betweenDates - (times.last() - times.first()))
+            return gaps.min().coerceAtLeast(1)
+        }
+
+    /** The shortest gap between two dates this repeat fires on, in minutes. */
+    private val shortestDateGapMinutes: Long
         get() {
             val n = every.coerceAtLeast(1).toLong()
             return when (unit) {
@@ -183,6 +218,17 @@ data class Reminder(
     val activeWindows: List<TimeWindow>
         get() = if (repeat.isCalendar) emptyList() else windows.filter { it.days.isNotEmpty() }
 
+    /**
+     * The times of day a calendar reminder goes off at, in order — the start moment's own time
+     * when the repeat names none, so the editor and the summary always have one to show.
+     */
+    fun calendarTimes(zone: ZoneId = ZoneId.systemDefault()): List<Int> = when {
+        !repeat.isCalendar -> emptyList()
+        repeat.hasOwnTimes -> repeat.activeTimes
+        hasStartMoment -> listOf(minuteOfDayOf(startAtMillis, zone))
+        else -> emptyList()
+    }
+
     /** True while the start moment is still ahead, so the loop has not begun yet. */
     fun isPending(nowMillis: Long = System.currentTimeMillis()): Boolean =
         hasStartMoment && startAtMillis > nowMillis
@@ -206,10 +252,20 @@ data class Reminder(
         /** The most early alerts a reminder may carry, so a single event never turns into a barrage. */
         const val MAX_EARLY_ALERTS = 3
 
+        /**
+         * The most times of day a calendar repeat may name. Past a dozen, an interval timer with
+         * a window is the better tool — and it keeps the editor a list rather than a timetable.
+         */
+        const val MAX_TIMES_PER_DAY = 12
+
         fun minuteToLocalTime(minuteOfDay: Int): LocalTime {
             val clamped = minuteOfDay.coerceIn(0, MINUTES_PER_DAY - 1)
             return LocalTime.of(clamped / 60, clamped % 60)
         }
+
+        /** The minute of the local day [epochMillis] falls on, e.g. 07:00 -> 420. */
+        fun minuteOfDayOf(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): Int =
+            localDateTimeOf(epochMillis, zone).toLocalTime().let { it.hour * 60 + it.minute }
 
         /** Builds an epoch-millis start moment from a local date and a minute of the day. */
         fun startMomentOf(

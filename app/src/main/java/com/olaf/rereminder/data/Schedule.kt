@@ -33,7 +33,9 @@ data class Alert(
  * alerts that would land outside the windows stay quiet, so nothing sounds while a window is
  * closed. To line the events up with a window, pin the start to its opening.
  *
- * Calendar reminders are walked date by date in local time at the start moment's time of day.
+ * Calendar reminders are walked date by date in local time, and every date fires at each of the
+ * repeat's times of day — the start moment's own time of day when it names none. The start moment
+ * stays the floor: a time of day that falls before it on the first date is simply not an event.
  */
 
 /** The first event strictly after [fromMillis], or null when the schedule can never match. */
@@ -200,16 +202,24 @@ private fun localMillis(date: LocalDate, minuteOfDay: Int, zone: ZoneId): Long =
 
 private fun Reminder.nextCalendarEventAfter(fromMillis: Long, zone: ZoneId): Long? {
     val anchor = effectiveAnchor.takeIf { it > 0L } ?: return null
-    val anchorTime = Instant.ofEpochMilli(anchor).atZone(zone)
-    val time: LocalTime = anchorTime.toLocalTime()
-    val anchorDate = anchorTime.toLocalDate()
+    val anchorAt = Instant.ofEpochMilli(anchor).atZone(zone)
+    val anchorDate = anchorAt.toLocalDate()
     val every = repeat.every.coerceAtLeast(1)
 
-    fun eventOn(date: LocalDate): Long = date.atTime(time).atZone(zone).toInstant().toEpochMilli()
-    fun qualifies(date: LocalDate): Boolean {
-        val at = eventOn(date)
-        return at > fromMillis && at >= anchor
-    }
+    // The repeat picks the dates, these pick the times of day on each of them. A repeat without
+    // times of its own still follows its start moment, down to the second it was pinned at.
+    val times: List<LocalTime> = repeat.activeTimes
+        .map { Reminder.minuteToLocalTime(it) }
+        .ifEmpty { listOf(anchorAt.toLocalTime()) }
+
+    /**
+     * The first event [date] can still produce: the earliest of its times that is both ahead of
+     * [fromMillis] and not before the start moment. Null when the whole date is behind us.
+     */
+    fun firstEventOn(date: LocalDate): Long? = times
+        .map { date.atTime(it).atZone(zone).toInstant().toEpochMilli() }
+        .filter { it > fromMillis && it >= anchor }
+        .minOrNull()
 
     val fromDate = Instant.ofEpochMilli(fromMillis).atZone(zone).toLocalDate()
     val startDate = maxOf(anchorDate, fromDate)
@@ -217,9 +227,10 @@ private fun Reminder.nextCalendarEventAfter(fromMillis: Long, zone: ZoneId): Lon
     return when (repeat.unit) {
         RepeatUnit.DAYS -> {
             val elapsed = ChronoUnit.DAYS.between(anchorDate, startDate)
-            var date = anchorDate.plusDays(ceilDiv(elapsed, every.toLong()) * every)
-            while (!qualifies(date)) date = date.plusDays(every.toLong())
-            eventOn(date)
+            val date = anchorDate.plusDays(ceilDiv(elapsed, every.toLong()) * every)
+            // That date is today at the earliest, so the answer is either a time still to come on
+            // it, or the first time of the next date in the cycle.
+            firstEventOn(date) ?: firstEventOn(date.plusDays(every.toLong()))
         }
 
         RepeatUnit.WEEKS -> {
@@ -229,8 +240,8 @@ private fun Reminder.nextCalendarEventAfter(fromMillis: Long, zone: ZoneId): Lon
             repeat((every * 7 + 7) * 2) {
                 val week = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
                 val weeksApart = ChronoUnit.WEEKS.between(anchorWeek, week)
-                if (weeksApart % every == 0L && date.dayOfWeek.value in weekdays && qualifies(date)) {
-                    return eventOn(date)
+                if (weeksApart % every == 0L && date.dayOfWeek.value in weekdays) {
+                    firstEventOn(date)?.let { return it }
                 }
                 date = date.plusDays(1)
             }
@@ -243,11 +254,14 @@ private fun Reminder.nextCalendarEventAfter(fromMillis: Long, zone: ZoneId): Lon
             var month = YearMonth.from(startDate)
             repeat(every * 2 + 2) {
                 if (ChronoUnit.MONTHS.between(anchorMonth, month) % every == 0L) {
-                    val dates = monthDays
+                    // Dates in order, so the first one with an event left is the earliest event.
+                    monthDays
                         .map { month.atDay(it.coerceIn(1, month.lengthOfMonth())) }
                         .distinct()
                         .sorted()
-                    dates.firstOrNull { it >= anchorDate && qualifies(it) }?.let { return eventOn(it) }
+                        .filter { it >= anchorDate }
+                        .firstNotNullOfOrNull { firstEventOn(it) }
+                        ?.let { return it }
                 }
                 month = month.plusMonths(1)
             }
