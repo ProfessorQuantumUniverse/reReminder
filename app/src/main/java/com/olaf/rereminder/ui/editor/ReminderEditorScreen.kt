@@ -103,6 +103,7 @@ import com.olaf.rereminder.ui.components.SectionValueRow
 import com.olaf.rereminder.ui.components.StartMomentDialog
 import com.olaf.rereminder.ui.components.rememberCollapseProgress
 import com.olaf.rereminder.ui.format.earlyAlertsLabel
+import com.olaf.rereminder.ui.format.formatMinuteOfDay
 import com.olaf.rereminder.ui.format.formatStartMoment
 import com.olaf.rereminder.ui.format.repeatLabel
 import com.olaf.rereminder.ui.format.scheduleSummary
@@ -221,6 +222,8 @@ fun ReminderEditorScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     /** Index into the windows being edited; -1 while adding a new one. */
     var editingWindow by remember { mutableStateOf<Int?>(null) }
+    /** Index into the times of day being edited; -1 while adding a new one. */
+    var editingTime by remember { mutableStateOf<Int?>(null) }
 
     val accent by animateColorAsState(
         targetValue = accentColor(draft.colorIndex),
@@ -308,8 +311,20 @@ fun ReminderEditorScreen(
                     },
                     onClick = { showStartDialog = true },
                 )
-                // Days, weeks and months fire at the start's time of day; hours of activity only
-                // mean something for an interval timer, so the section steps aside.
+                // A calendar repeat picks the dates and these pick the times on each of them, so
+                // "twice a day at 7:00 and 19:00" is one reminder rather than two.
+                AnimatedVisibility(
+                    visible = draft.repeat.isCalendar,
+                    enter = fadeIn() + expandVertically(Motion.spatial()),
+                    exit = fadeOut() + shrinkVertically(Motion.snappy()),
+                ) {
+                    Column {
+                        SectionDivider()
+                        TimesOfDaySection(draft = draft, onChange = onChange, onEditTime = { editingTime = it })
+                    }
+                }
+                // Hours of activity only mean something for an interval timer, so for the calendar
+                // units the section steps aside — the times of day took its place.
                 AnimatedVisibility(
                     visible = !draft.repeat.isCalendar,
                     enter = fadeIn() + expandVertically(Motion.spatial()),
@@ -414,8 +429,23 @@ fun ReminderEditorScreen(
             allowImmediate = !draft.repeat.isCalendar,
             onDismiss = { showStartDialog = false },
             onConfirm = { millis ->
+                // The times of day stand on their own once they are set, so moving the start
+                // never moves them: it only says when the reminder begins.
                 onChange { it.copy(startAtMillis = millis) }
                 showStartDialog = false
+            },
+        )
+    }
+
+    editingTime?.let { index ->
+        val times = draft.calendarTimes()
+        TimePickerDialog(
+            initialMinuteOfDay = times.getOrNull(index) ?: DEFAULT_NEW_TIME_MINUTE,
+            title = stringResource(R.string.editor_times_of_day),
+            onDismiss = { editingTime = null },
+            onConfirm = { minuteOfDay ->
+                onChange { it.withTime(index, minuteOfDay) }
+                editingTime = null
             },
         )
     }
@@ -487,10 +517,16 @@ fun ReminderEditorScreen(
     }
 }
 
+/** What a freshly added time of day starts out at, before the user moves the clock. */
+private const val DEFAULT_NEW_TIME_MINUTE = 12 * 60
+
 /**
  * Applies a new repeat rule and keeps the rest of the reminder consistent with it: calendar
  * repeats need a start moment to count from, and early alerts must stay shorter than the gap
  * between two events.
+ *
+ * The repeat dialog only sets the unit and the dates, so the times of day are carried over here —
+ * going from "every day at 7:00 and 19:00" to "every week" must keep both times.
  */
 private fun Reminder.withRepeat(repeat: Repeat): Reminder {
     val start = if (repeat.isCalendar && !hasStartMoment) {
@@ -501,10 +537,44 @@ private fun Reminder.withRepeat(repeat: Repeat): Reminder {
     } else {
         startAtMillis
     }
+    val next = if (repeat.isCalendar) repeat.copy(timesOfDay = this.repeat.timesOfDay) else repeat
     return copy(
-        repeat = repeat,
+        repeat = next,
         startAtMillis = start,
-        earlyAlerts = earlyAlerts.filter { it < repeat.shortestGapMinutes },
+        earlyAlerts = earlyAlerts.filter { it < next.shortestGapMinutes },
+    )
+}
+
+/**
+ * Sets the time of day at [index] to [minuteOfDay], or adds it when [index] is not in the list.
+ *
+ * Picking a time at all is what makes the reminder carry its own times instead of following its
+ * start moment, so the first edit writes the whole list — the one time seeded from the start
+ * included. From then on the two are independent: moving the start never moves a time, and the
+ * start is left to say only when the reminder begins.
+ */
+private fun Reminder.withTime(index: Int, minuteOfDay: Int): Reminder {
+    val times = calendarTimes().toMutableList()
+    if (index in times.indices) times[index] = minuteOfDay else times += minuteOfDay
+    return withTimes(times)
+}
+
+private fun Reminder.withoutTime(index: Int): Reminder =
+    withTimes(calendarTimes().filterIndexed { i, _ -> i != index })
+
+private fun Reminder.withTimes(times: List<Int>): Reminder {
+    val picked = times
+        .filter { it in 0 until Reminder.MINUTES_PER_DAY }
+        .distinct()
+        .sorted()
+        .take(Reminder.MAX_TIMES_PER_DAY)
+        .toSet()
+    if (picked.isEmpty()) return this
+    val next = repeat.copy(timesOfDay = picked)
+    return copy(
+        repeat = next,
+        // Two times an hour apart leave no room for an alert two hours ahead of each of them.
+        earlyAlerts = earlyAlerts.filter { it < next.shortestGapMinutes },
     )
 }
 
@@ -670,6 +740,58 @@ private fun ColourDot(color: Color, selected: Boolean, index: Int, onSelect: () 
 // --- Schedule -------------------------------------------------------------
 
 /**
+ * The times of day a calendar reminder goes off at: one row each, the clock behind the row.
+ *
+ * There is always at least one to show. A repeat that was never given times of its own lists the
+ * start moment's time, which is exactly what it fires at, so the section reads the same whether
+ * the reminder comes from an older version or was set up time by time.
+ */
+@Composable
+private fun TimesOfDaySection(
+    draft: Reminder,
+    onChange: ((Reminder) -> Reminder) -> Unit,
+    onEditTime: (Int) -> Unit,
+) {
+    val view = LocalView.current
+    val times = draft.calendarTimes()
+
+    Column(modifier = Modifier.padding(top = 14.dp, bottom = 8.dp)) {
+        Text(
+            text = stringResource(R.string.editor_times_of_day),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(start = 20.dp, end = 16.dp, bottom = 6.dp),
+        )
+        times.forEachIndexed { index, minuteOfDay ->
+            EditableRow(
+                label = formatMinuteOfDay(minuteOfDay),
+                removable = times.size > 1,
+                removeDescription = stringResource(R.string.editor_remove_time),
+                onClick = { onEditTime(index) },
+                onRemove = {
+                    view.tap()
+                    onChange { it.withoutTime(index) }
+                },
+            )
+        }
+        // A dozen times a day is where an interval timer inside a window becomes the better tool.
+        AnimatedVisibility(
+            visible = times.size < Reminder.MAX_TIMES_PER_DAY,
+            enter = fadeIn() + expandVertically(Motion.spatial()),
+            exit = fadeOut() + shrinkVertically(Motion.snappy()),
+        ) {
+            TextButton(
+                onClick = { view.tap(); onEditTime(-1) },
+                modifier = Modifier.padding(start = 8.dp),
+            ) {
+                Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.editor_add_time))
+            }
+        }
+    }
+}
+
+/**
  * The active-hours restriction: one switch row that grows its windows underneath. Off is the
  * common case, so the detail never occupies the screen unless it is in use. Several windows
  * (#7) are one line each — "Mon–Fri · 9:00–17:00", "Sat · 10:00–12:00".
@@ -703,9 +825,10 @@ private fun ScheduleSection(
         ) {
             Column(modifier = Modifier.padding(bottom = 8.dp)) {
                 draft.windows.forEachIndexed { index, window ->
-                    WindowRow(
+                    EditableRow(
                         label = windowLabel(window),
                         removable = draft.windows.size > 1,
+                        removeDescription = stringResource(R.string.editor_remove_window),
                         onClick = { onEditWindow(index) },
                         onRemove = {
                             view.tap()
@@ -733,8 +856,15 @@ private fun ScheduleSection(
     }
 }
 
+/** One line of a list the user builds up: a time window, or a time of day. */
 @Composable
-private fun WindowRow(label: String, removable: Boolean, onClick: () -> Unit, onRemove: () -> Unit) {
+private fun EditableRow(
+    label: String,
+    removable: Boolean,
+    removeDescription: String,
+    onClick: () -> Unit,
+    onRemove: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -762,7 +892,7 @@ private fun WindowRow(label: String, removable: Boolean, onClick: () -> Unit, on
             IconButton(onClick = onRemove) {
                 Icon(
                     Icons.Rounded.Close,
-                    contentDescription = stringResource(R.string.editor_remove_window),
+                    contentDescription = removeDescription,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -912,6 +1042,31 @@ private fun TextFieldValue.insertAtCaret(text: String): TextFieldValue {
     val updated = this.text.replaceRange(start, end, text)
     val caret = start + text.length
     return TextFieldValue(updated, TextRange(caret))
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ReminderEditorTimesPreview() {
+    ReReminderTheme(dynamicColor = false) {
+        ReminderEditorScreen(
+            draft = Reminder(
+                id = 2,
+                name = "Pills",
+                repeat = Repeat(RepeatUnit.DAYS, 1, timesOfDay = setOf(7 * 60, 19 * 60)),
+                startAtMillis = System.currentTimeMillis(),
+                colorIndex = 3,
+            ),
+            isNew = false,
+            canSave = true,
+            fullScreenAllowed = true,
+            onChange = {},
+            onPickTone = {},
+            onAllowFullScreen = {},
+            onSave = {},
+            onDelete = {},
+            onBack = {},
+        )
+    }
 }
 
 @Preview(showBackground = true)

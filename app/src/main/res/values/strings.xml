@@ -225,6 +225,11 @@
     <string name="editor_window_hint">Reminders keep to the interval and only go off inside these windows. To line them up with a window, set the start to its opening.</string>
     <string name="schedule_misses_windows">The interval never lands in a time window</string>
 
+    <!-- Several times a day -->
+    <string name="editor_times_of_day">Times of day</string>
+    <string name="editor_add_time">Add a time</string>
+    <string name="editor_remove_time">Remove time</string>
+
     <!-- 4.0: early alerts (#11) -->
     <string name="early_alerts_title">Early alerts</string>
     <string name="early_alerts_none">None</string>
