@@ -8,10 +8,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -113,10 +118,11 @@ private fun CollapsingBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            // Fill first, inset second: the container colour runs behind the status bar while the
-            // title and actions sit below it.
+            // Fill first, inset second: the container colour runs behind the status bar and nav bar
+            // while the title and actions sit within the safe area.
             .background(containerColor)
             .statusBarsPadding()
+            .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal))
             .height(height),
     ) {
         Row(

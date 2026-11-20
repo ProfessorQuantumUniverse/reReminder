@@ -38,6 +38,13 @@ jobs:
       - name: Lint, unit tests and debug build
         run: ./gradlew --no-daemon lintDebug testDebugUnitTest assembleDebug
 
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: reReminder-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
       - name: Upload lint and test reports
         if: failure()
         uses: actions/upload-artifact@v7
