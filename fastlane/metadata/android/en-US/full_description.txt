@@ -15,12 +15,16 @@ reReminder uses exact alarms that survive Doze, reboots, app updates and timezon
 <strong>Features:</strong><br>
 
 <ul>
-  <li><strong>Unlimited reminders:</strong> each with its own interval, from one minute to many hours.</li>
-  <li><strong>Schedules:</strong> pick weekdays and a daily time window per reminder.</li>
+  <li><strong>Unlimited reminders:</strong> each with its own rhythm, from every minute to every few months.</li>
+  <li><strong>Calendar repeats:</strong> every day, every 2 weeks on Mon and Thu, the 15th or the last day of the month, or the last Friday of every month.</li>
+  <li><strong>Several times a day:</strong> one reminder for your pills at 07:00 and 19:00.</li>
+  <li><strong>Schedules:</strong> pick weekdays and daily time windows for interval reminders.</li>
+  <li><strong>Notification or alarm:</strong> a gentle notification, or a full-screen alarm that rings until you answer it, with early alerts ahead.</li>
   <li><strong>Dynamic text:</strong> insert time, date, weekday, name, interval or next due time.</li>
   <li><strong>Text-to-Speech:</strong> have your reminder read aloud, in your device language.</li>
   <li><strong>Personalized alerts:</strong> choose a notification sound or vibration pattern, and mute either one per reminder.</li>
   <li><strong>Master switch:</strong> pause everything at once without losing your setup.</li>
+  <li><strong>Export and import:</strong> take your reminders and settings to a new phone.</li>
   <li><strong>Material 3 design:</strong> dynamic colors on Android 12+, full dark mode.</li>
   <li><strong>English and German</strong>, with per-app language support.</li>
 </ul>

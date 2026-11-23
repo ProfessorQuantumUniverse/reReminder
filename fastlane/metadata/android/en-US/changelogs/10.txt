@@ -1,0 +1,6 @@
+reReminder 4.2
+
+- Several times a day (#25): one reminder at 07:00 and 19:00. Tap the time, then "Another time".
+- Monthly by weekday (#22): the first Friday or the last Sunday of every month, or the last day of the month.
+- Text no longer cut off on small phones with large text; dialogs fit tablets and phones held sideways.
+- Material 3 Expressive shapes, "Reminder" wording fixes, no drawing under the side navigation bar.

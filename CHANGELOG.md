@@ -4,6 +4,44 @@ All notable changes to reReminder are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2] — 2026-11-23
+
+Several times a day, monthly rules by weekday, and an app that fits every screen.
+
+### Added
+
+- **Several times a day (#25).** A day, week or month repeat can go off at up to twelve times
+  of day, so "pills at 07:00 and 19:00" or "Thu and Sun at 15:00 and 17:00" is one reminder.
+  The editor stays as simple as before: Start names the day, one Time row the time. Tap the
+  time for the clock, and "Another time" under it adds a second one; only reminders with two
+  or more times get a small list behind the row. Early alerts stay shorter than the gap
+  between two times. Thanks to @gruvw.
+- **Monthly by weekday (#22).** The months tab of the repeat dialog can switch from days of
+  the month to a weekday: the first to fourth or the last Monday … Sunday of every month,
+  pre-set from the start date. Day 31 of the days of the month is now labelled "Last day",
+  which is what it always meant.
+
+### Changed
+
+- **Text fits small phones and large text.** Editor rows keep their title whole and wrap a
+  long value between words; segmented buttons shrink their labels together instead of cutting
+  them; all text hyphenates where the language allows; a reminder card's repeat line may take
+  two lines.
+- **Dialogs fit tablets and phones held sideways.** Dialog contents scroll instead of being
+  cut off; the repeat dialog puts the wheel next to the days and the start dialog its header
+  next to the calendar when the screen is short.
+- **Material 3 Expressive shapes** for the chosen colour, a running reminder's badge, a
+  finished setup step and the ringing alarm.
+- The debug build installs next to the release app as "reReminder Debug", and CI keeps its
+  APK for 30 days (#24). Thanks to @gruvw.
+
+### Fixed
+
+- In landscape, the header and the list no longer draw under the side navigation bar or the
+  camera cutout (#24). Thanks to @gruvw.
+- "Reminder" instead of "timer" in the remaining places, in English and German (#23). Thanks
+  to @gruvw.
+
 ## [4.1] — 2026-11-05
 
 Back up your reminders, and alarms that can't get stuck ringing.
@@ -187,6 +225,7 @@ A major update with a complete rewrite of the app.
 - Complete redesign using Jetpack Compose.
 - More reliable alarms and notifications.
 
+[4.2]: https://github.com/ProfessorQuantumUniverse/reReminder/releases/tag/v4.2
 [4.1]: https://github.com/ProfessorQuantumUniverse/reReminder/releases/tag/v4.1
 [4.0.1]: https://github.com/ProfessorQuantumUniverse/reReminder/releases/tag/v4.0.1
 [4.0]: https://github.com/ProfessorQuantumUniverse/reReminder/releases/tag/v4.0
