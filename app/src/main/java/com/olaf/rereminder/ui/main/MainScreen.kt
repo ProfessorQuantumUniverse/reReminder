@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -96,6 +98,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -233,6 +236,7 @@ fun MainScreen(
 ) {
     val listState = rememberLazyListState()
     val collapseProgress by rememberCollapseProgress(listState)
+    val layoutDirection = LocalLayoutDirection.current
     val view = LocalView.current
 
     // The button keeps its label until the user starts reading the list, then gets out of the way.
@@ -331,8 +335,8 @@ fun MainScreen(
                         top = innerPadding.calculateTopPadding() + 4.dp,
                         // Leave room for the FAB so the last card stays reachable.
                         bottom = innerPadding.calculateBottomPadding() + 96.dp,
-                        start = 20.dp,
-                        end = 20.dp,
+                        start = innerPadding.calculateStartPadding(layoutDirection) + 20.dp,
+                        end = innerPadding.calculateEndPadding(layoutDirection) + 20.dp,
                     ),
                     verticalArrangement = Arrangement.spacedBy(if (uiState.compact) 8.dp else 12.dp),
                 ) {
