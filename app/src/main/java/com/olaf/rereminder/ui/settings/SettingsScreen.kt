@@ -74,6 +74,7 @@ import com.olaf.rereminder.service.ReminderBackup
 import com.olaf.rereminder.service.suggestedBackupName
 import com.olaf.rereminder.ui.components.CollapsingHeader
 import com.olaf.rereminder.ui.components.MadeInEurope
+import com.olaf.rereminder.ui.components.ScreenInsets
 import com.olaf.rereminder.ui.components.SectionCard
 import com.olaf.rereminder.ui.components.SectionDivider
 import com.olaf.rereminder.ui.components.SectionItem
@@ -267,6 +268,7 @@ fun SettingsScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = ScreenInsets,
         topBar = {
             CollapsingHeader(
                 title = stringResource(R.string.settings_title),

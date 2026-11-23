@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name" translatable="false">reReminder</string>
+    <!-- The name under the launcher icon. The debug build overrides it, so the two installs can be told apart. -->
+    <string name="launcher_label" translatable="false">@string/app_name</string>
 
     <!-- Reminder list -->
     <string name="settings_title">Settings</string>
@@ -7,7 +9,7 @@
     <string name="add_timer">New reminder</string>
     <string name="empty_title">No reminders yet</string>
     <string name="empty_subtitle">Create a reminder to get reminded on a loop, a stretch every 30 minutes, water every hour, whatever keeps you going.</string>
-    <string name="empty_action">Create your first Reminder</string>
+    <string name="empty_action">Create your first reminder</string>
     <string name="master_all_reminders">All reminders</string>
     <string name="master_paused">Everything paused</string>
     <string name="master_nothing_running">No reminder is running</string>

@@ -1,0 +1,4 @@
+<resources>
+    <!-- Installs next to the release app (applicationIdSuffix ".debug"), so it needs its own name. -->
+    <string name="launcher_label" translatable="false">reReminder Debug</string>
+</resources>

@@ -118,6 +118,7 @@ import com.olaf.rereminder.data.displayName
 import com.olaf.rereminder.ui.components.CollapsingHeader
 import com.olaf.rereminder.ui.components.LiveText
 import com.olaf.rereminder.ui.components.MadeInEurope
+import com.olaf.rereminder.ui.components.ScreenInsets
 import com.olaf.rereminder.ui.components.rememberCollapseProgress
 import com.olaf.rereminder.ui.format.formatCoarseCountdown
 import com.olaf.rereminder.ui.format.formatCountdown
@@ -274,6 +275,7 @@ fun MainScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = ScreenInsets,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CollapsingHeader(

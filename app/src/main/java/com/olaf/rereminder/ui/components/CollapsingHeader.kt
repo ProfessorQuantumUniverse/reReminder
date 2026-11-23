@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.MaterialTheme
@@ -118,11 +120,11 @@ private fun CollapsingBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            // Fill first, inset second: the container colour runs behind the status bar and nav bar
-            // while the title and actions sit within the safe area.
+            // Fill first, inset second: the container colour runs behind the status bar, and in
+            // landscape behind the side nav bar and camera cutout, while title and actions stay clear.
             .background(containerColor)
             .statusBarsPadding()
-            .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal))
+            .windowInsetsPadding(ScreenInsets.only(WindowInsetsSides.Horizontal))
             .height(height),
     ) {
         Row(
@@ -174,6 +176,13 @@ private fun CollapsingBar(
         )
     }
 }
+
+/**
+ * What every screen keeps its content clear of: the system bars and, in landscape, the camera
+ * cutout as well. The keyboard is left out, so a screen with it open behaves as it did before.
+ */
+val ScreenInsets: WindowInsets
+    @Composable get() = WindowInsets.systemBars.union(WindowInsets.displayCutout)
 
 /**
  * How far the header has collapsed, 0f expanded to 1f collapsed.

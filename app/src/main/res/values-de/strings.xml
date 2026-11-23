@@ -5,10 +5,10 @@
     <string name="add_timer">Neue Erinnerung</string>
     <string name="empty_title">Noch keine Erinnerungen</string>
     <string name="empty_subtitle">Lege eine Erinnerung an, um im Loop erinnert zu werden, alle 30 Minuten strecken, jede Stunde trinken, was auch immer dich in Bewegung hält.</string>
-    <string name="empty_action">Ersten Reminder anlegen</string>
+    <string name="empty_action">Erste Erinnerung anlegen</string>
     <string name="master_all_reminders">Alle Erinnerungen</string>
     <string name="master_paused">Alles pausiert</string>
-    <string name="master_nothing_running">Kein Reminder läuft</string>
+    <string name="master_nothing_running">Keine Erinnerung läuft</string>
     <string name="master_next_in">Nächste: %1$s in %2$s</string>
     <string name="master_next_at">Nächste: %1$s um %2$s</string>
     <string name="master_next_on">Nächste: %1$s startet %2$s</string>
@@ -35,8 +35,8 @@
     <string name="schedule_never">Keine Tage ausgewählt</string>
 
     <!-- Editor -->
-    <string name="editor_new_title">Neuer Reminder</string>
-    <string name="editor_edit_title">Reminder bearbeiten</string>
+    <string name="editor_new_title">Neue Erinnerung</string>
+    <string name="editor_edit_title">Erinnerung bearbeiten</string>
     <string name="editor_section_timing">Zeitlich</string>
     <string name="editor_section_start">Start</string>
     <string name="editor_section_schedule">Zeitplan</string>
@@ -67,7 +67,7 @@
     <string name="variable_time">Uhrzeit</string>
     <string name="variable_date">Datum</string>
     <string name="variable_day">Wochentag</string>
-    <string name="variable_name">Reminder-Name</string>
+    <string name="variable_name">Name der Erinnerung</string>
     <string name="variable_interval">Intervall</string>
     <string name="variable_next">Nächster Termin</string>
 

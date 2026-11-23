@@ -96,6 +96,7 @@ import com.olaf.rereminder.data.SoundMode
 import com.olaf.rereminder.data.TimeWindow
 import com.olaf.rereminder.ui.components.CollapsingHeader
 import com.olaf.rereminder.ui.components.RepeatDialog
+import com.olaf.rereminder.ui.components.ScreenInsets
 import com.olaf.rereminder.ui.components.SectionCard
 import com.olaf.rereminder.ui.components.SectionDivider
 import com.olaf.rereminder.ui.components.SectionSwitchRow
@@ -234,6 +235,7 @@ fun ReminderEditorScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = ScreenInsets,
         topBar = {
             CollapsingHeader(
                 title = stringResource(
