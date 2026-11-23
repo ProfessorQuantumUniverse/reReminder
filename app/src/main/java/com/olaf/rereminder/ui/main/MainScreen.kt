@@ -23,6 +23,8 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,7 +43,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
@@ -125,7 +126,9 @@ import com.olaf.rereminder.ui.format.formatCountdown
 import com.olaf.rereminder.ui.format.formatStartMoment
 import com.olaf.rereminder.ui.format.repeatLabel
 import com.olaf.rereminder.ui.format.scheduleSummary
+import com.olaf.rereminder.ui.theme.ExpressiveShapes
 import com.olaf.rereminder.ui.theme.Motion
+import com.olaf.rereminder.ui.theme.MorphShape
 import com.olaf.rereminder.ui.theme.ReReminderTheme
 import com.olaf.rereminder.ui.theme.accentColor
 import com.olaf.rereminder.ui.theme.pressScale
@@ -748,7 +751,7 @@ private fun ReminderCard(
                             text = repeatLabel(reminder.repeat),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
@@ -945,10 +948,19 @@ private fun ProgressBadge(row: ReminderRow, accent: Color, active: Boolean, comp
             label = "badgeFill",
         )
 
+        // A running reminder's badge grows Material 3 Expressive's scallops inside its ring;
+        // paused or not started yet, it stays a plain circle — status at a glance, not decoration.
+        val running = active && !row.isPending
+        val morph by animateFloatAsState(
+            targetValue = if (running) 1f else 0f,
+            animationSpec = Motion.spatial(),
+            label = "badgeShape",
+        )
+
         Box(
             modifier = Modifier
                 .size(size - 14.dp)
-                .clip(CircleShape)
+                .clip(MorphShape(ExpressiveShapes.CircleToCookie, morph.coerceIn(0f, 1f), rotation = morph * 20f))
                 .background(badgeColor),
             contentAlignment = Alignment.Center,
         ) {
@@ -1149,7 +1161,7 @@ private fun ReliabilityDialog(
         },
         title = { Text(stringResource(R.string.reliability_prompt_title)) },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
                     text = stringResource(R.string.reliability_prompt_intro),
                     style = MaterialTheme.typography.bodyMedium,

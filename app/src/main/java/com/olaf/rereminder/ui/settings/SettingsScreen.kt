@@ -552,7 +552,7 @@ private fun ImportDialog(
         onDismissRequest = onDismiss,
         title = { Text(pluralStringResource(R.plurals.backup_import_question, preview.count, preview.count)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (hasCurrent) {
                     Text(
                         pluralStringResource(
@@ -706,7 +706,7 @@ private fun SingleChoiceDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 options.forEachIndexed { index, label ->
                     Row(
                         modifier = Modifier

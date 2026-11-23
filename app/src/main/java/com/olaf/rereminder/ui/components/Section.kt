@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.Card
@@ -25,12 +27,18 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.Hyphens
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import com.olaf.rereminder.ui.theme.Motion
 import com.olaf.rereminder.ui.theme.tap
@@ -96,43 +104,78 @@ fun SectionValueRow(
         animationSpec = Motion.fade(),
         label = "sectionRowAlpha",
     )
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .tappable(enabled = enabled, pressedScale = 0.99f, onClick = onClick)
-            .padding(start = 20.dp, end = 16.dp, top = 16.dp, bottom = 16.dp)
-            .graphicsLayer { this.alpha = alpha },
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f),
-        )
-        Spacer(Modifier.width(12.dp))
-        // The value is what changed, so it is what moves.
-        AnimatedContent(
-            targetState = value,
-            transitionSpec = {
-                (slideInVertically(Motion.spatial()) { h -> h / 2 } + fadeIn())
-                    .togetherWith(fadeOut())
-            },
-            label = "sectionRowValue",
-        ) { text ->
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = valueColor,
+    // On a narrow phone with large text a long value ("Every month on the last Friday") used to
+    // take the whole row and squeeze the title to one letter per line. Now, when the two do not
+    // fit side by side, the title keeps at least its longest word — "Wiederholen" is never split —
+    // and the value wraps in what is left.
+    val titleStyle = MaterialTheme.typography.bodyLarge
+    // A value wraps between words only: "Jeden Mo-nat" reads worse than one more line.
+    val valueStyle = titleStyle.copy(fontWeight = FontWeight.Medium, hyphens = Hyphens.None)
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val available = maxWidth - ROW_CHROME
+        val split = remember(title, value, titleStyle, available, density) {
+            fun widthOf(text: String, style: TextStyle) = with(density) {
+                measurer.measure(text, style, maxLines = 1, softWrap = false).size.width.toDp()
+            }
+            val titleWidth = widthOf(title, titleStyle)
+            val valueWidth = widthOf(value, valueStyle)
+            if (titleWidth + valueWidth <= available) {
+                null
+            } else {
+                val longestWord = title.split(' ').maxOf { widthOf(it, titleStyle) }
+                (available - minOf(valueWidth, available * 0.6f))
+                    .coerceAtLeast(longestWord)
+                    .coerceAtMost(minOf(titleWidth, available * 0.72f))
+            }
+        }
+        val valueMaxWidth = if (split == null) available else available - split
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .tappable(enabled = enabled, pressedScale = 0.99f, onClick = onClick)
+                .padding(start = 20.dp, end = 16.dp, top = 16.dp, bottom = 16.dp)
+                .graphicsLayer { this.alpha = alpha },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (split == null) {
+                Text(text = title, style = titleStyle, modifier = Modifier.weight(1f))
+                Spacer(Modifier.width(12.dp))
+            } else {
+                Text(text = title, style = titleStyle, modifier = Modifier.width(split))
+                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.weight(1f))
+            }
+            // The value is what changed, so it is what moves.
+            AnimatedContent(
+                targetState = value,
+                transitionSpec = {
+                    (slideInVertically(Motion.spatial()) { h -> h / 2 } + fadeIn())
+                        .togetherWith(fadeOut())
+                },
+                label = "sectionRowValue",
+                modifier = Modifier.widthIn(max = valueMaxWidth),
+                contentAlignment = Alignment.CenterEnd,
+            ) { text ->
+                Text(
+                    text = text,
+                    style = valueStyle,
+                    color = valueColor,
+                    textAlign = TextAlign.End,
+                )
+            }
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Icon(
-            Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
+
+/** What a [SectionValueRow] spends besides title and value: its padding, the gap and the arrow. */
+private val ROW_CHROME = 72.dp
 
 /** A row whose value is long enough to need its own line underneath the title. */
 @Composable

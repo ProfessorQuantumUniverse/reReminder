@@ -211,16 +211,17 @@
     <string name="repeat_on_month_days">%1$s am %2$s</string>
     <string name="repeat_month_end_hint">In kürzeren Monaten fallen der 29. und 30. auf den letzten Tag.</string>
     <!-- #22: der letzte Tag oder ein Wochentag nach seiner Stelle im Monat -->
+    <!-- Die Ordnungswörter bringen ihren Abstand selbst mit: geschützt nach "1.", damit "1." nie allein am Zeilenende steht. -->
     <string name="repeat_last_day_of_month">letzten Tag</string>
     <string name="repeat_last_day_pill">Letzter Tag</string>
-    <string name="repeat_on_month_weekday">%1$s am %2$s %3$s</string>
+    <string name="repeat_on_month_weekday">%1$s am %2$s%3$s</string>
     <string name="repeat_month_by_day">Monatstag</string>
     <string name="repeat_month_by_weekday">Wochentag</string>
-    <string name="month_week_first">1.</string>
-    <string name="month_week_second">2.</string>
-    <string name="month_week_third">3.</string>
-    <string name="month_week_fourth">4.</string>
-    <string name="month_week_last">letzten</string>
+    <string name="month_week_first">"1. "</string>
+    <string name="month_week_second">"2. "</string>
+    <string name="month_week_third">"3. "</string>
+    <string name="month_week_fourth">"4. "</string>
+    <string name="month_week_last">"letzten "</string>
     <string name="month_week_chip_1">1.</string>
     <string name="month_week_chip_2">2.</string>
     <string name="month_week_chip_3">3.</string>

@@ -23,6 +23,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -34,7 +35,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -98,12 +98,15 @@ import com.olaf.rereminder.data.SoundChoice
 import com.olaf.rereminder.data.SoundMode
 import com.olaf.rereminder.data.TimeWindow
 import com.olaf.rereminder.ui.components.CollapsingHeader
+import com.olaf.rereminder.ui.components.SegmentIconWidth
+import com.olaf.rereminder.ui.components.SegmentPadding
 import com.olaf.rereminder.ui.components.RepeatDialog
 import com.olaf.rereminder.ui.components.ScreenInsets
 import com.olaf.rereminder.ui.components.SectionCard
 import com.olaf.rereminder.ui.components.SectionDivider
 import com.olaf.rereminder.ui.components.SectionSwitchRow
 import com.olaf.rereminder.ui.components.SectionValueRow
+import com.olaf.rereminder.ui.components.rememberSegmentLabelStyle
 import com.olaf.rereminder.ui.components.StartMomentDialog
 import com.olaf.rereminder.ui.components.rememberCollapseProgress
 import com.olaf.rereminder.ui.format.earlyAlertsLabel
@@ -114,7 +117,9 @@ import com.olaf.rereminder.ui.format.repeatLabel
 import com.olaf.rereminder.ui.format.scheduleSummary
 import com.olaf.rereminder.ui.format.timesLabel
 import com.olaf.rereminder.ui.format.windowLabel
+import com.olaf.rereminder.ui.theme.ExpressiveShapes
 import com.olaf.rereminder.ui.theme.Motion
+import com.olaf.rereminder.ui.theme.MorphShape
 import com.olaf.rereminder.ui.theme.ReReminderTheme
 import com.olaf.rereminder.ui.theme.ReminderAccents
 import com.olaf.rereminder.ui.theme.accentColor
@@ -683,9 +688,10 @@ private fun IdentityBlock(draft: Reminder, onChange: ((Reminder) -> Reminder) ->
 
 @Composable
 private fun ColourDot(color: Color, selected: Boolean, index: Int, onSelect: () -> Unit) {
-    // The chosen dot swells slightly and the ring draws itself in.
+    // The chosen dot swells, grows its scallops (Material 3 Expressive's cookie) with a slight
+    // turn, and the ring draws itself in along the new edge.
     val scale by animateFloatAsState(
-        targetValue = if (selected) 1.15f else 1f,
+        targetValue = if (selected) 1.2f else 1f,
         animationSpec = Motion.expressive(),
         label = "colourScale",
     )
@@ -694,6 +700,13 @@ private fun ColourDot(color: Color, selected: Boolean, index: Int, onSelect: () 
         animationSpec = Motion.spatial(),
         label = "colourRing",
     )
+    val morph by animateFloatAsState(
+        targetValue = if (selected) 1f else 0f,
+        animationSpec = Motion.expressive(),
+        label = "colourShape",
+    )
+    // The spring may overshoot; the shape itself stays between circle and cookie.
+    val shape = MorphShape(ExpressiveShapes.CircleToCookie, morph.coerceIn(0f, 1f), rotation = morph * 40f)
 
     Box(
         modifier = Modifier
@@ -702,12 +715,12 @@ private fun ColourDot(color: Color, selected: Boolean, index: Int, onSelect: () 
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(CircleShape)
+            .clip(shape)
             .background(color)
             .border(
                 width = ringWidth.dp,
                 color = MaterialTheme.colorScheme.onSurface,
-                shape = CircleShape,
+                shape = shape,
             )
             .tappable(pressedScale = 0.82f, onClick = onSelect),
         contentAlignment = Alignment.Center,
@@ -747,7 +760,7 @@ private fun TimesOfDayDialog(
         icon = { Icon(Icons.Rounded.Schedule, contentDescription = null) },
         title = { Text(stringResource(R.string.editor_times_of_day)) },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 times.forEachIndexed { index, minuteOfDay ->
                     EditableRow(
                         label = formatMinuteOfDay(minuteOfDay),
@@ -895,42 +908,46 @@ private fun AlertStyleRow(style: AlertStyle, accent: Color, onStyle: (AlertStyle
         )
         Spacer(Modifier.height(10.dp))
         val options = AlertStyle.entries
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            options.forEachIndexed { index, option ->
-                val selected = style == option
-                SegmentedButton(
-                    selected = selected,
-                    onClick = {
-                        if (!selected) {
-                            view.tick()
-                            onStyle(option)
-                        }
-                    },
-                    shape = SegmentedButtonDefaults.itemShape(index, options.size),
-                    colors = SegmentedButtonDefaults.colors(
-                        activeContainerColor = accent.copy(alpha = 0.18f),
-                    ),
-                    icon = {
-                        WigglingIcon(
-                            selected = selected,
-                            icon = {
-                                Icon(
-                                    if (option == AlertStyle.ALARM) Icons.Rounded.Alarm else Icons.Rounded.NotificationsNone,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            },
-                        )
-                    },
-                    label = {
-                        Text(
-                            stringResource(
-                                if (option == AlertStyle.ALARM) R.string.alert_style_alarm else R.string.alert_style_notification
-                            ),
-                            maxLines = 1,
-                        )
-                    },
-                )
+        val labels = options.map {
+            stringResource(if (it == AlertStyle.ALARM) R.string.alert_style_alarm else R.string.alert_style_notification)
+        }
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val labelStyle = rememberSegmentLabelStyle(
+                labels,
+                maxWidth,
+                MaterialTheme.typography.labelLarge,
+                reserved = SegmentPadding + SegmentIconWidth,
+            )
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                options.forEachIndexed { index, option ->
+                    val selected = style == option
+                    SegmentedButton(
+                        selected = selected,
+                        onClick = {
+                            if (!selected) {
+                                view.tick()
+                                onStyle(option)
+                            }
+                        },
+                        shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                        colors = SegmentedButtonDefaults.colors(
+                            activeContainerColor = accent.copy(alpha = 0.18f),
+                        ),
+                        icon = {
+                            WigglingIcon(
+                                selected = selected,
+                                icon = {
+                                    Icon(
+                                        if (option == AlertStyle.ALARM) Icons.Rounded.Alarm else Icons.Rounded.NotificationsNone,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                },
+                            )
+                        },
+                        label = { Text(labels[index], style = labelStyle, maxLines = 1, softWrap = false) },
+                    )
+                }
             }
         }
     }

@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -25,7 +26,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.Snooze
@@ -57,6 +57,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.olaf.rereminder.R
 import com.olaf.rereminder.service.AlarmService
 import com.olaf.rereminder.service.RingingAlarm
+import com.olaf.rereminder.ui.theme.ExpressiveShapes
+import com.olaf.rereminder.ui.theme.PolygonShape
 import com.olaf.rereminder.ui.theme.ReReminderTheme
 import com.olaf.rereminder.ui.theme.accentColor
 import com.olaf.rereminder.ui.theme.pressScale
@@ -130,6 +132,14 @@ private fun AlarmScreen(
         animationSpec = infiniteRepeatable(tween(1600, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "haloAlpha",
     )
+    // The halo is Material 3 Expressive's sunny burst and turns very slowly; the button-like disc
+    // in front is its scalloped cookie. Movement that reads as "ringing" without flashing.
+    val haloTurn by breath.animateFloat(
+        initialValue = 0f,
+        targetValue = 45f,
+        animationSpec = infiniteRepeatable(tween(12_000, easing = LinearEasing), RepeatMode.Restart),
+        label = "haloTurn",
+    )
 
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
         Box(
@@ -156,12 +166,12 @@ private fun AlarmScreen(
                             .size(168.dp)
                             .scale(haloScale)
                             .graphicsLayer { alpha = haloAlpha }
-                            .background(accent, CircleShape),
+                            .background(accent, PolygonShape(ExpressiveShapes.Sunny, rotation = haloTurn)),
                     )
                     Box(
                         modifier = Modifier
                             .size(104.dp)
-                            .background(accent, CircleShape),
+                            .background(accent, PolygonShape(ExpressiveShapes.Cookie)),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(

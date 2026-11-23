@@ -217,7 +217,7 @@
     <!-- #22: the last day, or a weekday by its place in the month -->
     <string name="repeat_last_day_of_month">last day</string>
     <string name="repeat_last_day_pill">Last day</string>
-    <string name="repeat_on_month_weekday">%1$s on the %2$s %3$s</string>
+    <string name="repeat_on_month_weekday">%1$s on the %2$s %3$s</string>
     <string name="repeat_month_by_day">Day of month</string>
     <string name="repeat_month_by_weekday">Weekday</string>
     <string name="month_week_first">first</string>

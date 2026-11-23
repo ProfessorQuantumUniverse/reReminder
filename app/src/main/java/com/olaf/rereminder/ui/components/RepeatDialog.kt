@@ -11,7 +11,9 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -49,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import com.olaf.rereminder.R
 import com.olaf.rereminder.data.MonthWeekday
 import com.olaf.rereminder.data.Repeat
@@ -69,6 +72,19 @@ private const val WHEEL_ITEM_HEIGHT_DP = 46
 private const val WHEEL_ROWS = 5
 private const val MAX_HOURS = 72
 private const val TAB_MIN_HEIGHT_DP = 430
+
+/**
+ * Below this much screen height — a phone or a small tablet held sideways — the dialog drops its
+ * fixed tab height and the wheels show three rows, so the day grid is not pushed off the screen.
+ */
+private const val COMPACT_HEIGHT_DP = 640
+
+@Composable
+private fun isCompactHeight(): Boolean = screenSize().height < COMPACT_HEIGHT_DP.dp
+
+@Composable
+private fun wheelRows(): Int = if (isCompactHeight()) 3 else WHEEL_ROWS
+
 
 private val MaxCount = mapOf(
     RepeatUnit.DAYS to 365,
@@ -97,6 +113,8 @@ fun RepeatDialog(
     onConfirm: (Repeat) -> Unit,
 ) {
     val view = LocalView.current
+    val screen = screenSize()
+    val sideBySide = isCompactHeight() && screen.width > screen.height
 
     var unit by rememberSaveable { mutableStateOf(current.unit) }
     var hours by rememberSaveable {
@@ -131,35 +149,35 @@ fun RepeatDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.interval_dialog_title)) },
+        // On a very short screen the headline below already says what is being set; the dialog
+        // also takes Material's full width, so the wheel and the days fit side by side.
+        title = if (isVeryShort()) null else ({ Text(stringResource(R.string.interval_dialog_title)) }),
+        properties = DialogProperties(usePlatformDefaultWidth = !sideBySide),
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 val units = RepeatUnit.entries
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    units.forEachIndexed { index, option ->
-                        SegmentedButton(
-                            selected = unit == option,
-                            onClick = {
-                                view.tick()
-                                if (unit != option && option != RepeatUnit.TIME) {
-                                    count = count.coerceIn(1, MaxCount.getValue(option))
-                                }
-                                unit = option
-                            },
-                            shape = SegmentedButtonDefaults.itemShape(index, units.size),
-                            icon = {},
-                            label = {
-                                Text(
-                                    stringResource(unitLabel(option)),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                )
-                            },
-                        )
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    val labels = units.map { stringResource(unitLabel(it)) }
+                    val labelStyle = rememberSegmentLabelStyle(labels, maxWidth, MaterialTheme.typography.labelMedium)
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        units.forEachIndexed { index, option ->
+                            SegmentedButton(
+                                selected = unit == option,
+                                onClick = {
+                                    view.tick()
+                                    if (unit != option && option != RepeatUnit.TIME) {
+                                        count = count.coerceIn(1, MaxCount.getValue(option))
+                                    }
+                                    unit = option
+                                },
+                                shape = SegmentedButtonDefaults.itemShape(index, units.size),
+                                icon = {},
+                                label = { Text(labels[index], style = labelStyle, maxLines = 1, softWrap = false) },
+                            )
+                        }
                     }
                 }
 
@@ -196,12 +214,14 @@ fun RepeatDialog(
                             .using(SizeTransform(clip = false))
                     },
                     label = "repeatUnit",
-                    // One height for every tab, so the dialog does not jump when switching.
-                    modifier = Modifier.heightIn(min = TAB_MIN_HEIGHT_DP.dp),
+                    // One height for every tab, so the dialog does not jump when switching — unless
+                    // the screen is too short to spare it.
+                    modifier = Modifier.heightIn(min = if (isCompactHeight()) 0.dp else TAB_MIN_HEIGHT_DP.dp),
                     contentAlignment = Alignment.TopCenter,
                 ) { shown ->
                     when (shown) {
                         RepeatUnit.TIME -> TimeTab(
+                            sideBySide = sideBySide,
                             hours = hours,
                             minutes = minutes,
                             onHours = { hours = it },
@@ -213,15 +233,21 @@ fun RepeatDialog(
                             },
                         )
 
-                        else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CountWheel(
-                                unit = shown,
-                                count = count.coerceIn(1, MaxCount.getValue(shown)),
-                                onCount = { count = it },
-                            )
+                        // Held sideways there is no height for the wheel above the days: they sit
+                        // side by side instead, so nothing has to be scrolled to.
+                        else -> SideBySideOrStacked(
+                            sideBySide = sideBySide,
+                            first = {
+                                CountWheel(
+                                    unit = shown,
+                                    count = count.coerceIn(1, MaxCount.getValue(shown)),
+                                    onCount = { count = it },
+                                )
+                            },
+                        ) {
                             when (shown) {
                                 RepeatUnit.WEEKS -> {
-                                    Spacer(Modifier.height(16.dp))
+                                    if (!sideBySide) Spacer(Modifier.height(16.dp))
                                     DayPills(
                                         selected = weekdays,
                                         accent = accent,
@@ -235,18 +261,24 @@ fun RepeatDialog(
                                 }
 
                                 RepeatUnit.MONTHS -> {
-                                    Spacer(Modifier.height(16.dp))
+                                    if (!sideBySide) Spacer(Modifier.height(16.dp))
                                     // Days of the month stay the default; the weekday is one tap away.
-                                    val modes = listOf(R.string.repeat_month_by_day, R.string.repeat_month_by_weekday)
-                                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                                        modes.forEachIndexed { index, label ->
-                                            SegmentedButton(
-                                                selected = byWeekday == (index == 1),
-                                                onClick = { view.tick(); byWeekday = index == 1 },
-                                                shape = SegmentedButtonDefaults.itemShape(index, modes.size),
-                                                icon = {},
-                                                label = { Text(stringResource(label), maxLines = 1) },
-                                            )
+                                    val modes = listOf(
+                                        stringResource(R.string.repeat_month_by_day),
+                                        stringResource(R.string.repeat_month_by_weekday),
+                                    )
+                                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                                        val modeStyle = rememberSegmentLabelStyle(modes, maxWidth, MaterialTheme.typography.labelLarge)
+                                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                                            modes.forEachIndexed { index, label ->
+                                                SegmentedButton(
+                                                    selected = byWeekday == (index == 1),
+                                                    onClick = { view.tick(); byWeekday = index == 1 },
+                                                    shape = SegmentedButtonDefaults.itemShape(index, modes.size),
+                                                    icon = {},
+                                                    label = { Text(label, style = modeStyle, maxLines = 1, softWrap = false) },
+                                                )
+                                            }
                                         }
                                     }
                                     Spacer(Modifier.height(12.dp))
@@ -260,6 +292,7 @@ fun RepeatDialog(
                                         )
                                     } else {
                                         MonthDayGrid(
+                                            cellAspect = if (sideBySide) 1.35f else 1f,
                                             selected = monthDays,
                                             accent = accent,
                                             onToggle = { day ->
@@ -306,8 +339,39 @@ private fun unitLabel(unit: RepeatUnit): Int = when (unit) {
     RepeatUnit.MONTHS -> R.string.repeat_unit_months
 }
 
+/**
+ * [first] above [rest], or — when [sideBySide] — next to it, so a dialog held sideways on a phone
+ * or small tablet needs no scrolling.
+ */
+@Composable
+private fun SideBySideOrStacked(
+    sideBySide: Boolean,
+    first: @Composable () -> Unit,
+    firstWeight: Float = 1f,
+    restWeight: Float = 1.5f,
+    rest: @Composable ColumnScope.() -> Unit,
+) {
+    if (sideBySide) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.weight(firstWeight), contentAlignment = Alignment.Center) { first() }
+            Spacer(Modifier.width(16.dp))
+            Column(
+                modifier = Modifier.weight(restWeight),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                content = rest,
+            )
+        }
+    } else {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            first()
+            rest()
+        }
+    }
+}
+
 @Composable
 private fun TimeTab(
+    sideBySide: Boolean,
     hours: Int,
     minutes: Int,
     onHours: (Int) -> Unit,
@@ -315,54 +379,56 @@ private fun TimeTab(
     onPreset: (Int) -> Unit,
 ) {
     val total = hours * 60 + minutes
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        WheelBand {
+    SideBySideOrStacked(sideBySide = sideBySide, firstWeight = 1.3f, restWeight = 1f, first = {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            WheelBand {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    val hoursLabel = stringResource(R.string.hours_label)
+                    val minutesLabel = stringResource(R.string.minutes_label)
+                    WheelPicker(
+                        values = (0..MAX_HOURS).toList(),
+                        selected = hours,
+                        onValueChange = onHours,
+                        label = { it.twoDigits() },
+                        contentDescriptionOf = { "$hoursLabel: $it" },
+                        itemHeight = WHEEL_ITEM_HEIGHT_DP.dp,
+                        visibleItems = wheelRows(),
+                        modifier = Modifier.width(92.dp),
+                    )
+                    Text(
+                        text = ":",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 6.dp),
+                    )
+                    WheelPicker(
+                        values = (0..59).toList(),
+                        selected = minutes,
+                        onValueChange = onMinutes,
+                        label = { it.twoDigits() },
+                        contentDescriptionOf = { "$minutesLabel: $it" },
+                        itemHeight = WHEEL_ITEM_HEIGHT_DP.dp,
+                        visibleItems = wheelRows(),
+                        modifier = Modifier.width(92.dp),
+                    )
+                }
+            }
+    
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
             ) {
-                val hoursLabel = stringResource(R.string.hours_label)
-                val minutesLabel = stringResource(R.string.minutes_label)
-                WheelPicker(
-                    values = (0..MAX_HOURS).toList(),
-                    selected = hours,
-                    onValueChange = onHours,
-                    label = { it.twoDigits() },
-                    contentDescriptionOf = { "$hoursLabel: $it" },
-                    itemHeight = WHEEL_ITEM_HEIGHT_DP.dp,
-                    visibleItems = WHEEL_ROWS,
-                    modifier = Modifier.width(92.dp),
-                )
-                Text(
-                    text = ":",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 6.dp),
-                )
-                WheelPicker(
-                    values = (0..59).toList(),
-                    selected = minutes,
-                    onValueChange = onMinutes,
-                    label = { it.twoDigits() },
-                    contentDescriptionOf = { "$minutesLabel: $it" },
-                    itemHeight = WHEEL_ITEM_HEIGHT_DP.dp,
-                    visibleItems = WHEEL_ROWS,
-                    modifier = Modifier.width(92.dp),
-                )
+                WheelCaption(stringResource(R.string.hours_label))
+                Spacer(Modifier.width(24.dp))
+                WheelCaption(stringResource(R.string.minutes_label))
             }
         }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            WheelCaption(stringResource(R.string.hours_label))
-            Spacer(Modifier.width(24.dp))
-            WheelCaption(stringResource(R.string.minutes_label))
-        }
-
-        Spacer(Modifier.height(16.dp))
+    }) {
+        if (!sideBySide) Spacer(Modifier.height(16.dp))
 
         // Still one tap for the intervals people pick most of the time.
         FlowRow(
@@ -394,7 +460,7 @@ private fun CountWheel(unit: RepeatUnit, count: Int, onCount: (Int) -> Unit) {
                     label = { it.toString() },
                     contentDescriptionOf = { it.toString() },
                     itemHeight = WHEEL_ITEM_HEIGHT_DP.dp,
-                    visibleItems = WHEEL_ROWS,
+                    visibleItems = wheelRows(),
                     modifier = Modifier.width(92.dp),
                 )
             }
@@ -431,7 +497,13 @@ private fun WheelBand(content: @Composable () -> Unit) {
  * (#22) is the one the schedule already had, now with a name instead of a number to guess at.
  */
 @Composable
-private fun MonthDayGrid(selected: Set<Int>, accent: Color, onToggle: (Int) -> Unit) {
+private fun MonthDayGrid(
+    selected: Set<Int>,
+    accent: Color,
+    onToggle: (Int) -> Unit,
+    /** Width over height of a day cell; held sideways the cells go flatter to save height. */
+    cellAspect: Float = 1f,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         val weeks = (1..30).chunked(7)
         weeks.forEachIndexed { index, week ->
@@ -443,7 +515,7 @@ private fun MonthDayGrid(selected: Set<Int>, accent: Color, onToggle: (Int) -> U
                         accent = accent,
                         modifier = Modifier
                             .weight(1f)
-                            .aspectRatio(1f),
+                            .aspectRatio(cellAspect),
                         onClick = { onToggle(day) },
                     )
                 }
@@ -456,7 +528,7 @@ private fun MonthDayGrid(selected: Set<Int>, accent: Color, onToggle: (Int) -> U
                         // As tall as a day cell: the cells' width is a seventh of the row.
                         modifier = Modifier
                             .weight(free.toFloat())
-                            .aspectRatio(free.toFloat()),
+                            .aspectRatio(free * cellAspect),
                         onClick = { onToggle(LAST_DAY_OF_MONTH) },
                     )
                 }

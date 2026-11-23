@@ -74,7 +74,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.olaf.rereminder.R
 import com.olaf.rereminder.ui.components.MadeInEurope
+import com.olaf.rereminder.ui.theme.ExpressiveShapes
 import com.olaf.rereminder.ui.theme.Motion
+import com.olaf.rereminder.ui.theme.MorphShape
 import com.olaf.rereminder.ui.theme.ReReminderTheme
 import com.olaf.rereminder.ui.theme.tap
 import com.olaf.rereminder.utils.Reliability
@@ -379,6 +381,12 @@ private fun StepBadge(index: Int, done: Boolean, icon: ImageVector) {
         animationSpec = Motion.expressive(),
         label = "badgeScale",
     )
+    // ...and the circle bursts into Material 3 Expressive's "sunny" shape as it does.
+    val morph by animateFloatAsState(
+        targetValue = if (done) 1f else 0f,
+        animationSpec = Motion.expressive(),
+        label = "badgeShape",
+    )
 
     Box(
         modifier = Modifier
@@ -387,7 +395,7 @@ private fun StepBadge(index: Int, done: Boolean, icon: ImageVector) {
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(CircleShape)
+            .clip(MorphShape(ExpressiveShapes.CircleToSunny, morph.coerceIn(0f, 1f), rotation = morph * 45f))
             .background(background),
         contentAlignment = Alignment.Center,
     ) {

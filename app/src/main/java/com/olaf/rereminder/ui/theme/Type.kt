@@ -4,6 +4,8 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.Hyphens
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.unit.sp
 
 private val Default = FontFamily.Default
@@ -108,4 +110,31 @@ val Typography = Typography(
         lineHeight = 16.sp,
         letterSpacing = 0.5.sp,
     ),
-)
+).withReadableBreaks()
+
+/**
+ * German runs long ("Weckerbenachrichtigung"), and on a small phone with large text a word that
+ * does not fit used to be cut or pushed whole onto the next line. Every style now hyphenates where
+ * the language allows it, and headlines balance their lines instead of leaving one word alone.
+ */
+private fun Typography.withReadableBreaks(): Typography {
+    fun TextStyle.text() = copy(hyphens = Hyphens.Auto, lineBreak = LineBreak.Paragraph)
+    fun TextStyle.heading() = copy(hyphens = Hyphens.Auto, lineBreak = LineBreak.Heading)
+    return copy(
+        displayLarge = displayLarge.heading(),
+        displayMedium = displayMedium.heading(),
+        displaySmall = displaySmall.heading(),
+        headlineLarge = headlineLarge.heading(),
+        headlineMedium = headlineMedium.heading(),
+        headlineSmall = headlineSmall.heading(),
+        titleLarge = titleLarge.heading(),
+        titleMedium = titleMedium.text(),
+        titleSmall = titleSmall.text(),
+        bodyLarge = bodyLarge.text(),
+        bodyMedium = bodyMedium.text(),
+        bodySmall = bodySmall.text(),
+        labelLarge = labelLarge.text(),
+        labelMedium = labelMedium.text(),
+        labelSmall = labelSmall.text(),
+    )
+}

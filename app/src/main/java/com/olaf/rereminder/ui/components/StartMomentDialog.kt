@@ -131,18 +131,13 @@ fun StartMomentDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = 6.dp,
-            modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 24.dp)
-                .widthIn(max = 400.dp),
-        ) {
-            Column(
-                modifier = Modifier.padding(vertical = 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
+        // Held sideways on a phone or a small tablet there is no room for the header, the calendar
+        // and the buttons on top of each other: the header and buttons move left of the calendar.
+        val screen = screenSize()
+        val sideBySide = screen.height < SIDE_BY_SIDE_BELOW_HEIGHT_DP.dp && screen.width > screen.height
+
+        val header: @Composable () -> Unit = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(
                     imageVector = if (step == Step.DATE) {
                         Icons.Rounded.CalendarMonth
@@ -167,118 +162,154 @@ fun StartMomentDialog(
                     color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center,
                 )
+            }
+        }
 
-                Spacer(Modifier.height(12.dp))
+        val picker: @Composable (Modifier) -> Unit = { modifier ->
+            Box(modifier = modifier.verticalScroll(rememberScrollState())) {
+                AnimatedContent(
+                    targetState = step,
+                    transitionSpec = {
+                        val forward = targetState == Step.TIME
+                        val enter = slideInHorizontally(Motion.spatial()) { w ->
+                            if (forward) w else -w
+                        } + fadeIn()
+                        val exit = slideOutHorizontally(Motion.spatial()) { w ->
+                            if (forward) -w else w
+                        } + fadeOut()
+                        enter togetherWith exit
+                    },
+                    label = "startStep",
+                ) { current ->
+                    when (current) {
+                        Step.DATE -> DateStep(
+                            zone = zone,
+                            onStartNow = if (allowImmediate) {
+                                { onConfirm(0L) }
+                            } else {
+                                null
+                            },
+                            onPickShortcut = { date ->
+                                datePickerState.selectedDateMillis = date.toUtcMillis()
+                                // Selecting alone leaves the grid where it was, so "Next
+                                // Monday" at the end of a month ticked a day nobody could see.
+                                datePickerState.displayedMonthMillis =
+                                    date.withDayOfMonth(1).toUtcMillis()
+                            },
+                            datePicker = {
+                                DatePicker(
+                                    state = datePickerState,
+                                    title = null,
+                                    headline = null,
+                                    // The dialog already prints the chosen moment above, and
+                                    // the toggle would otherwise sit alone in an empty band.
+                                    showModeToggle = false,
+                                )
+                            },
+                        )
 
-                Box(
-                    modifier = Modifier
-                        .heightIn(max = 460.dp)
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    AnimatedContent(
-                        targetState = step,
-                        transitionSpec = {
-                            val forward = targetState == Step.TIME
-                            val enter = slideInHorizontally(Motion.spatial()) { w ->
-                                if (forward) w else -w
-                            } + fadeIn()
-                            val exit = slideOutHorizontally(Motion.spatial()) { w ->
-                                if (forward) -w else w
-                            } + fadeOut()
-                            enter togetherWith exit
-                        },
-                        label = "startStep",
-                    ) { current ->
-                        when (current) {
-                            Step.DATE -> DateStep(
-                                zone = zone,
-                                onStartNow = if (allowImmediate) {
-                                    { onConfirm(0L) }
-                                } else {
-                                    null
-                                },
-                                onPickShortcut = { date ->
-                                    datePickerState.selectedDateMillis = date.toUtcMillis()
-                                    // Selecting alone leaves the grid where it was, so "Next
-                                    // Monday" at the end of a month ticked a day nobody could see.
-                                    datePickerState.displayedMonthMillis =
-                                        date.withDayOfMonth(1).toUtcMillis()
-                                },
-                                datePicker = {
-                                    DatePicker(
-                                        state = datePickerState,
-                                        title = null,
-                                        headline = null,
-                                        // The dialog already prints the chosen moment above, and
-                                        // the toggle would otherwise sit alone in an empty band.
-                                        showModeToggle = false,
-                                    )
-                                },
-                            )
-
-                            Step.TIME -> Box(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                TimePicker(state = timePickerState)
-                            }
+                        Step.TIME -> Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            TimePicker(state = timePickerState)
                         }
                     }
                 }
+            }
+    }
 
-                Spacer(Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    when (step) {
-                        Step.DATE -> {
-                            TextButton(onClick = onDismiss) {
-                                Text(stringResource(R.string.action_cancel))
-                            }
-                            Spacer(Modifier.width(8.dp))
-                            if (!pickTime) {
-                                Button(onClick = { view.tap(); onConfirm(resultMillis) }) {
-                                    Text(stringResource(R.string.action_ok))
-                                }
-                                return@Row
-                            }
-                            Button(onClick = { view.tap(); step = Step.TIME }) {
-                                Text(stringResource(R.string.start_pick_time))
-                                Spacer(Modifier.width(6.dp))
-                                Icon(
-                                    Icons.AutoMirrored.Rounded.ArrowForward,
-                                    contentDescription = null,
-                                    modifier = Modifier.height(18.dp).width(18.dp),
-                                )
-                            }
+        val buttons: @Composable () -> Unit = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                when (step) {
+                    Step.DATE -> {
+                        TextButton(onClick = onDismiss) {
+                            Text(stringResource(R.string.action_cancel))
                         }
-
-                        Step.TIME -> {
-                            TextButton(onClick = { view.tap(); step = Step.DATE }) {
-                                Icon(
-                                    Icons.Rounded.CalendarMonth,
-                                    contentDescription = null,
-                                    modifier = Modifier.height(18.dp).width(18.dp),
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Text(stringResource(R.string.start_pick_date))
-                            }
-                            Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(8.dp))
+                        if (!pickTime) {
                             Button(onClick = { view.tap(); onConfirm(resultMillis) }) {
                                 Text(stringResource(R.string.action_ok))
                             }
+                            return@Row
+                        }
+                        Button(onClick = { view.tap(); step = Step.TIME }) {
+                            Text(stringResource(R.string.start_pick_time))
+                            Spacer(Modifier.width(6.dp))
+                            Icon(
+                                Icons.AutoMirrored.Rounded.ArrowForward,
+                                contentDescription = null,
+                                modifier = Modifier.height(18.dp).width(18.dp),
+                            )
+                        }
+                    }
+
+                    Step.TIME -> {
+                        TextButton(onClick = { view.tap(); step = Step.DATE }) {
+                            Icon(
+                                Icons.Rounded.CalendarMonth,
+                                contentDescription = null,
+                                modifier = Modifier.height(18.dp).width(18.dp),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.start_pick_date))
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Button(onClick = { view.tap(); onConfirm(resultMillis) }) {
+                            Text(stringResource(R.string.action_ok))
                         }
                     }
                 }
             }
         }
+
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            tonalElevation = 6.dp,
+            modifier = Modifier
+                .padding(horizontal = 12.dp, vertical = 24.dp)
+                .widthIn(max = if (sideBySide) 780.dp else 400.dp),
+        ) {
+            if (sideBySide) {
+                Row(
+                    modifier = Modifier.padding(vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        header()
+                        Spacer(Modifier.height(24.dp))
+                        buttons()
+                    }
+                    picker(Modifier.width(380.dp))
+                }
+            } else {
+                Column(
+                    modifier = Modifier.padding(vertical = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    header()
+                    Spacer(Modifier.height(12.dp))
+                    picker(Modifier.heightIn(max = 460.dp))
+                    Spacer(Modifier.height(12.dp))
+                    buttons()
+                }
+            }
+        }
     }
 }
+
+/** Below this screen height, held sideways, the dialog lays header and calendar side by side: stacked it needs about this much. */
+private const val SIDE_BY_SIDE_BELOW_HEIGHT_DP = 720
 
 @Composable
 private fun DateStep(

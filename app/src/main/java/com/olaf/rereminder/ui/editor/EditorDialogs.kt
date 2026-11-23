@@ -17,6 +17,8 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -64,6 +66,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.net.toUri
 import com.olaf.rereminder.R
 import com.olaf.rereminder.data.AlertStyle
@@ -74,6 +77,7 @@ import com.olaf.rereminder.data.TimeWindow
 import com.olaf.rereminder.ui.components.DayPills
 import com.olaf.rereminder.ui.components.SectionSwitchRow
 import com.olaf.rereminder.ui.components.SectionValueRow
+import com.olaf.rereminder.ui.components.isVeryShort
 import com.olaf.rereminder.ui.format.formatMinuteOfDay
 import com.olaf.rereminder.ui.format.offsetLabel
 import com.olaf.rereminder.ui.theme.tap
@@ -99,7 +103,7 @@ internal fun WindowDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.window_dialog_title)) },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 DayPills(
                     selected = window.days,
                     accent = accent,
@@ -207,12 +211,16 @@ internal fun TimePickerDialog(
         is24Hour = android.text.format.DateFormat.is24HourFormat(LocalContext.current),
     )
 
+    // Held sideways on a phone the clock turns horizontal; it needs the full dialog width and
+    // every bit of height, so the icon and title step aside.
+    val veryShort = isVeryShort()
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Rounded.Schedule, contentDescription = null) },
-        title = title?.let { { Text(it) } },
+        icon = if (veryShort) null else ({ Icon(Icons.Rounded.Schedule, contentDescription = null) }),
+        title = if (veryShort) null else title?.let { { Text(it) } },
+        properties = DialogProperties(usePlatformDefaultWidth = !veryShort),
         text = {
-            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
                 TimePicker(state = state)
                 if (onAddAnother != null) {
                     TextButton(onClick = { view.tap(); onAddAnother(state.hour * 60 + state.minute) }) {
@@ -255,7 +263,7 @@ internal fun EarlyAlertsDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.early_alerts_title)) },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
                     text = stringResource(R.string.early_alerts_hint),
                     style = MaterialTheme.typography.bodyMedium,
@@ -373,7 +381,7 @@ internal fun SoundDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.sound_dialog_title)) },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 SoundOption(
                     label = stringResource(R.string.sound_default_option),
                     supporting = stringResource(
