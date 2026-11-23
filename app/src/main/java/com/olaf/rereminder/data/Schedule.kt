@@ -250,13 +250,19 @@ private fun Reminder.nextCalendarEventAfter(fromMillis: Long, zone: ZoneId): Lon
 
         RepeatUnit.MONTHS -> {
             val monthDays = repeat.monthDays.ifEmpty { setOf(anchorDate.dayOfMonth) }
+            // "The first Friday" (#22) replaces the days of the month when it is set.
+            val weekday = repeat.monthWeekday?.takeIf { it.isValid }
             val anchorMonth = YearMonth.from(anchorDate)
             var month = YearMonth.from(startDate)
             repeat(every * 2 + 2) {
                 if (ChronoUnit.MONTHS.between(anchorMonth, month) % every == 0L) {
+                    val dates = if (weekday != null) {
+                        listOf(weekday.dateIn(month))
+                    } else {
+                        monthDays.map { month.atDay(it.coerceIn(1, month.lengthOfMonth())) }
+                    }
                     // Dates in order, so the first one with an event left is the earliest event.
-                    monthDays
-                        .map { month.atDay(it.coerceIn(1, month.lengthOfMonth())) }
+                    dates
                         .distinct()
                         .sorted()
                         .filter { it >= anchorDate }

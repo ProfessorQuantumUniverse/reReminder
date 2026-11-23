@@ -1,6 +1,7 @@
 package com.olaf.rereminder.ui.format
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.olaf.rereminder.R
@@ -196,17 +197,46 @@ fun repeatLabel(repeat: Repeat): String {
 
         RepeatUnit.MONTHS -> {
             val base = pluralStringResource(R.plurals.repeat_every_months, n, n)
-            if (repeat.monthDays.isEmpty()) {
-                base
-            } else {
-                stringResource(
-                    R.string.repeat_on_month_days,
+            val weekday = repeat.monthWeekday?.takeIf { it.isValid }
+            when {
+                weekday != null -> stringResource(
+                    R.string.repeat_on_month_weekday,
                     base,
-                    repeat.monthDays.sorted().joinToString(", ") { ordinal(it) },
+                    stringResource(monthWeekWord(weekday.week)),
+                    DayOfWeek.of(weekday.day).getDisplayName(TextStyle.FULL, LocalConfiguration.current.locales[0]),
                 )
+
+                repeat.monthDays.isEmpty() -> base
+                else -> {
+                    val lastDay = stringResource(R.string.repeat_last_day_of_month)
+                    stringResource(
+                        R.string.repeat_on_month_days,
+                        base,
+                        // 31 falls on the last day of every month, so that is what it says.
+                        repeat.monthDays.sorted().joinToString(", ") { if (it == 31) lastDay else ordinal(it) },
+                    )
+                }
             }
         }
     }
+}
+
+/** "first" … "last" in "every month on the first Friday". */
+fun monthWeekWord(week: Int): Int = when (week) {
+    1 -> R.string.month_week_first
+    2 -> R.string.month_week_second
+    3 -> R.string.month_week_third
+    4 -> R.string.month_week_fourth
+    else -> R.string.month_week_last
+}
+
+/** "1st" … "Last" on the chips that pick the week of the month. */
+fun monthWeekChip(week: Int): Int = when (week) {
+    1 -> R.string.month_week_chip_1
+    2 -> R.string.month_week_chip_2
+    3 -> R.string.month_week_chip_3
+    4 -> R.string.month_week_chip_4
+    else -> R.string.month_week_chip_last
 }
 
 /** "1st", "22nd" in English; "1.", "22." elsewhere, which reads correctly in German. */

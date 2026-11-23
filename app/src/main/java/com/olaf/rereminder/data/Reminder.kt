@@ -1,11 +1,49 @@
 package com.olaf.rereminder.data
 
 import kotlinx.serialization.Serializable
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.YearMonth
 import java.time.ZoneId
+import java.time.temporal.TemporalAdjusters
+
+/**
+ * A weekday by its place in the month (#22): the [week]th one, 1–4, or the last one when [week] is
+ * [LAST] — "the first Friday", "the last Sunday". [day] is an ISO weekday, 1 = Monday.
+ *
+ * A fifth one is left out on purpose: most months have none, and "last" is what people mean.
+ */
+@Serializable
+data class MonthWeekday(
+    val week: Int = 1,
+    val day: Int = 1,
+) {
+    val isValid: Boolean
+        get() = (week in 1..4 || week == LAST) && day in 1..7
+
+    /** This weekday's date in [month]; every month has a first to fourth and a last of each. */
+    fun dateIn(month: YearMonth): LocalDate {
+        val weekday = DayOfWeek.of(day.coerceIn(1, 7))
+        return if (week == LAST) {
+            month.atEndOfMonth().with(TemporalAdjusters.previousOrSame(weekday))
+        } else {
+            month.atDay(1).with(TemporalAdjusters.dayOfWeekInMonth(week.coerceIn(1, 4), weekday))
+        }
+    }
+
+    companion object {
+        const val LAST = -1
+
+        /** The place [date] has in its month: the 23rd, a Monday, is the fourth Monday. */
+        fun of(date: LocalDate): MonthWeekday {
+            val week = (date.dayOfMonth - 1) / 7 + 1
+            return MonthWeekday(week = if (week > 4) LAST else week, day = date.dayOfWeek.value)
+        }
+    }
+}
 
 /** What a [Repeat] counts in. */
 @Serializable
@@ -35,8 +73,13 @@ data class Repeat(
     val every: Int = 60,
     /** [RepeatUnit.WEEKS] only: ISO weekdays to fire on. Empty means the start moment's weekday. */
     val weekdays: Set<Int> = emptySet(),
-    /** [RepeatUnit.MONTHS] only: days of the month. 29–31 fall back to the last day of shorter months. */
+    /**
+     * [RepeatUnit.MONTHS] only: days of the month. 29–31 fall back to the last day of shorter
+     * months, so 31 always means the last day of the month.
+     */
     val monthDays: Set<Int> = emptySet(),
+    /** [RepeatUnit.MONTHS] only: when set, the month fires on this weekday instead of [monthDays]. */
+    val monthWeekday: MonthWeekday? = null,
     /**
      * Calendar units only: the times of day to fire at on every date the rule picks, as minutes
      * from local midnight — so 07:00 and 19:00 is `{420, 1140}`. Empty means the start moment's
@@ -95,7 +138,8 @@ data class Repeat(
 
                 RepeatUnit.MONTHS -> {
                     val days = monthDays.sorted()
-                    if (days.size <= 1) {
+                    // One weekday a month: the same one a month later is four or five weeks on.
+                    if (monthWeekday != null || days.size <= 1) {
                         n * SHORTEST_MONTH_DAYS * DAY_MINUTES
                     } else {
                         // Day 31 can collapse onto day 30 in a short month, so count conservatively.

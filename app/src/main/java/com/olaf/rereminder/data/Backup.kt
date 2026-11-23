@@ -166,6 +166,9 @@ object Backup {
             every = reminder.repeat.every.coerceAtLeast(1),
             weekdays = reminder.repeat.weekdays.filterTo(sortedSetOf()) { it in 1..7 },
             monthDays = reminder.repeat.monthDays.filterTo(sortedSetOf()) { it in 1..31 },
+            // A weekday the app cannot place falls back to the days of the month.
+            monthWeekday = reminder.repeat.monthWeekday
+                ?.takeIf { reminder.repeat.unit == RepeatUnit.MONTHS && it.isValid },
             // Times of day only mean something for a calendar repeat; an interval timer's times
             // are its ticks, so carrying any along would only make two reminders look different.
             timesOfDay = if (reminder.repeat.isCalendar) {

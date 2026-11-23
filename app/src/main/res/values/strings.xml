@@ -213,7 +213,23 @@
     </plurals>
     <string name="repeat_on_days">%1$s on %2$s</string>
     <string name="repeat_on_month_days">%1$s on the %2$s</string>
-    <string name="repeat_month_end_hint">In shorter months, days past the end fall on the last day.</string>
+    <string name="repeat_month_end_hint">In shorter months, the 29th and 30th fall on the last day.</string>
+    <!-- #22: the last day, or a weekday by its place in the month -->
+    <string name="repeat_last_day_of_month">last day</string>
+    <string name="repeat_last_day_pill">Last day</string>
+    <string name="repeat_on_month_weekday">%1$s on the %2$s %3$s</string>
+    <string name="repeat_month_by_day">Day of month</string>
+    <string name="repeat_month_by_weekday">Weekday</string>
+    <string name="month_week_first">first</string>
+    <string name="month_week_second">second</string>
+    <string name="month_week_third">third</string>
+    <string name="month_week_fourth">fourth</string>
+    <string name="month_week_last">last</string>
+    <string name="month_week_chip_1">1st</string>
+    <string name="month_week_chip_2">2nd</string>
+    <string name="month_week_chip_3">3rd</string>
+    <string name="month_week_chip_4">4th</string>
+    <string name="month_week_chip_last">Last</string>
     <string name="start_required">Pick a date</string>
     <string name="schedule_at_time">at %1$s</string>
     <string name="schedule_needs_start">Needs a start date</string>

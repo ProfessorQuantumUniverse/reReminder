@@ -50,9 +50,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.olaf.rereminder.R
+import com.olaf.rereminder.data.MonthWeekday
 import com.olaf.rereminder.data.Repeat
 import com.olaf.rereminder.data.RepeatUnit
 import com.olaf.rereminder.ui.format.intervalLabel
+import com.olaf.rereminder.ui.format.monthWeekChip
 import com.olaf.rereminder.ui.format.repeatLabel
 import com.olaf.rereminder.ui.theme.Motion
 import com.olaf.rereminder.ui.theme.ReReminderTheme
@@ -108,13 +110,23 @@ fun RepeatDialog(
     }
     var weekdays by rememberSaveable { mutableStateOf(current.weekdays.ifEmpty { setOf(anchorWeekday) }) }
     var monthDays by rememberSaveable { mutableStateOf(current.monthDays.ifEmpty { setOf(anchorMonthDay) }) }
+    // "The first Friday" (#22): pre-set to the start date's own place in its month.
+    var byWeekday by rememberSaveable { mutableStateOf(current.monthWeekday != null) }
+    var monthWeek by rememberSaveable {
+        mutableIntStateOf(current.monthWeekday?.week ?: weekOfMonth(anchorMonthDay))
+    }
+    var monthWeekDay by rememberSaveable { mutableIntStateOf(current.monthWeekday?.day ?: anchorWeekday) }
 
     val result = when (unit) {
         // The interval must never be zero, otherwise the alarm would fire immediately.
         RepeatUnit.TIME -> Repeat(RepeatUnit.TIME, (hours * 60 + minutes).coerceAtLeast(1))
         RepeatUnit.DAYS -> Repeat(RepeatUnit.DAYS, count)
         RepeatUnit.WEEKS -> Repeat(RepeatUnit.WEEKS, count, weekdays = weekdays)
-        RepeatUnit.MONTHS -> Repeat(RepeatUnit.MONTHS, count, monthDays = monthDays)
+        RepeatUnit.MONTHS -> if (byWeekday) {
+            Repeat(RepeatUnit.MONTHS, count, monthWeekday = MonthWeekday(monthWeek, monthWeekDay))
+        } else {
+            Repeat(RepeatUnit.MONTHS, count, monthDays = monthDays)
+        }
     }
 
     AlertDialog(
@@ -224,22 +236,46 @@ fun RepeatDialog(
 
                                 RepeatUnit.MONTHS -> {
                                     Spacer(Modifier.height(16.dp))
-                                    MonthDayGrid(
-                                        selected = monthDays,
-                                        accent = accent,
-                                        onToggle = { day ->
-                                            val next = if (day in monthDays) monthDays - day else monthDays + day
-                                            if (next.isNotEmpty()) monthDays = next
-                                        },
-                                    )
-                                    if (monthDays.any { it > 28 }) {
-                                        Spacer(Modifier.height(8.dp))
-                                        Text(
-                                            text = stringResource(R.string.repeat_month_end_hint),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            textAlign = TextAlign.Center,
+                                    // Days of the month stay the default; the weekday is one tap away.
+                                    val modes = listOf(R.string.repeat_month_by_day, R.string.repeat_month_by_weekday)
+                                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                                        modes.forEachIndexed { index, label ->
+                                            SegmentedButton(
+                                                selected = byWeekday == (index == 1),
+                                                onClick = { view.tick(); byWeekday = index == 1 },
+                                                shape = SegmentedButtonDefaults.itemShape(index, modes.size),
+                                                icon = {},
+                                                label = { Text(stringResource(label), maxLines = 1) },
+                                            )
+                                        }
+                                    }
+                                    Spacer(Modifier.height(12.dp))
+                                    if (byWeekday) {
+                                        MonthWeekdayPicker(
+                                            week = monthWeek,
+                                            day = monthWeekDay,
+                                            accent = accent,
+                                            onWeek = { view.tap(); monthWeek = it },
+                                            onDay = { monthWeekDay = it },
                                         )
+                                    } else {
+                                        MonthDayGrid(
+                                            selected = monthDays,
+                                            accent = accent,
+                                            onToggle = { day ->
+                                                val next = if (day in monthDays) monthDays - day else monthDays + day
+                                                if (next.isNotEmpty()) monthDays = next
+                                            },
+                                        )
+                                        if (monthDays.any { it in 29..30 }) {
+                                            Spacer(Modifier.height(8.dp))
+                                            Text(
+                                                text = stringResource(R.string.repeat_month_end_hint),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                textAlign = TextAlign.Center,
+                                            )
+                                        }
                                     }
                                 }
 
@@ -388,11 +424,17 @@ private fun WheelBand(content: @Composable () -> Unit) {
     }
 }
 
-/** Days 1–31 in a compact seven-column grid. */
+/**
+ * Days 1–30 in a compact seven-column grid, then "Last day" across the rest of the last row.
+ *
+ * "Last day" is day 31, which every month clamps to its own last day — so the rule people ask for
+ * (#22) is the one the schedule already had, now with a name instead of a number to guess at.
+ */
 @Composable
 private fun MonthDayGrid(selected: Set<Int>, accent: Color, onToggle: (Int) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        (1..31).chunked(7).forEach { week ->
+        val weeks = (1..30).chunked(7)
+        weeks.forEachIndexed { index, week ->
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 week.forEach { day ->
                     TogglePill(
@@ -405,10 +447,62 @@ private fun MonthDayGrid(selected: Set<Int>, accent: Color, onToggle: (Int) -> U
                         onClick = { onToggle(day) },
                     )
                 }
-                // Keep the last row's cells the same size as the others.
-                repeat(7 - week.size) { Spacer(Modifier.weight(1f)) }
+                val free = 7 - week.size
+                if (index == weeks.lastIndex && free > 0) {
+                    TogglePill(
+                        label = stringResource(R.string.repeat_last_day_pill),
+                        selected = LAST_DAY_OF_MONTH in selected,
+                        accent = accent,
+                        // As tall as a day cell: the cells' width is a seventh of the row.
+                        modifier = Modifier
+                            .weight(free.toFloat())
+                            .aspectRatio(free.toFloat()),
+                        onClick = { onToggle(LAST_DAY_OF_MONTH) },
+                    )
+                }
             }
         }
+    }
+}
+
+/** Day 31: every shorter month falls back to its last day, so it is always the last one. */
+private const val LAST_DAY_OF_MONTH = 31
+
+/** The week of the month [dayOfMonth] falls in: 1–4, or last for the 29th onwards. */
+private fun weekOfMonth(dayOfMonth: Int): Int =
+    ((dayOfMonth - 1) / 7 + 1).let { if (it > 4) MonthWeekday.LAST else it }
+
+/**
+ * "The first … last" over the weekdays: two rows of the same pills, one week and one day. "Last"
+ * gets a double cell, so the whole choice stays on one line in every language.
+ */
+@Composable
+private fun MonthWeekdayPicker(
+    week: Int,
+    day: Int,
+    accent: Color,
+    onWeek: (Int) -> Unit,
+    onDay: (Int) -> Unit,
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            listOf(1, 2, 3, 4, MonthWeekday.LAST).forEach { option ->
+                TogglePill(
+                    label = stringResource(monthWeekChip(option)),
+                    selected = option == week,
+                    accent = accent,
+                    modifier = Modifier
+                        .weight(if (option == MonthWeekday.LAST) 2f else 1f)
+                        .height(42.dp),
+                    onClick = { onWeek(option) },
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        DayPills(selected = setOf(day), accent = accent, onToggle = onDay)
     }
 }
 
