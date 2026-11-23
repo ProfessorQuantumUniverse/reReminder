@@ -53,6 +53,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.olaf.rereminder.R
 import com.olaf.rereminder.data.Reminder
+import com.olaf.rereminder.ui.format.formatStartDate
 import com.olaf.rereminder.ui.format.formatStartMoment
 import com.olaf.rereminder.ui.theme.Motion
 import com.olaf.rereminder.ui.theme.tap
@@ -74,6 +75,9 @@ private enum class Step { DATE, TIME }
  * Date first, then time, because that is the order people say it in. Both steps live in one
  * dialog and slide across, so choosing a start never costs two separate popups.
  *
+ * Calendar repeats ask for the date only ([pickTime] false): their times of day have a row of
+ * their own, so the dialog confirms straight from the calendar and returns that day's midnight.
+ *
  * Built on a raw [Dialog] rather than an `AlertDialog`: Material's date grid asks for a fixed
  * 360dp, and an alert dialog's insets clip the last weekday column off it.
  */
@@ -83,8 +87,10 @@ fun StartMomentDialog(
     initialMillis: Long,
     onDismiss: () -> Unit,
     onConfirm: (Long) -> Unit,
-    /** False for calendar repeats, which need a pinned date and time to count from. */
+    /** False for calendar repeats, which need a pinned date to count from. */
     allowImmediate: Boolean = true,
+    /** False to ask for the day alone, for repeats whose times of day are set elsewhere. */
+    pickTime: Boolean = true,
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -117,7 +123,7 @@ fun StartMomentDialog(
 
     val resultMillis = Reminder.startMomentOf(
         date = pickedDate,
-        minuteOfDay = timePickerState.hour * 60 + timePickerState.minute,
+        minuteOfDay = if (pickTime) timePickerState.hour * 60 + timePickerState.minute else 0,
         zone = zone,
     )
 
@@ -148,14 +154,14 @@ fun StartMomentDialog(
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = stringResource(R.string.start_dialog_title),
+                    text = stringResource(if (pickTime) R.string.start_dialog_title else R.string.start_dialog_date_title),
                     style = MaterialTheme.typography.headlineSmall,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(4.dp))
                 // Always shows the whole moment, so switching steps never hides half the answer.
                 Text(
-                    text = formatStartMoment(resultMillis),
+                    text = if (pickTime) formatStartMoment(resultMillis) else formatStartDate(resultMillis),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary,
@@ -235,6 +241,12 @@ fun StartMomentDialog(
                                 Text(stringResource(R.string.action_cancel))
                             }
                             Spacer(Modifier.width(8.dp))
+                            if (!pickTime) {
+                                Button(onClick = { view.tap(); onConfirm(resultMillis) }) {
+                                    Text(stringResource(R.string.action_ok))
+                                }
+                                return@Row
+                            }
                             Button(onClick = { view.tap(); step = Step.TIME }) {
                                 Text(stringResource(R.string.start_pick_time))
                                 Spacer(Modifier.width(6.dp))

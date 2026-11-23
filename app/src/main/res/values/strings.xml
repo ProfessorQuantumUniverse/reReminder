@@ -231,6 +231,12 @@
     <string name="editor_times_of_day">Times of day</string>
     <string name="editor_add_time">Add a time</string>
     <string name="editor_remove_time">Remove time</string>
+    <string name="editor_add_another_time">Another time</string>
+    <plurals name="editor_time_row">
+        <item quantity="one">Time</item>
+        <item quantity="other">Times</item>
+    </plurals>
+    <string name="start_dialog_date_title">Starts on</string>
 
     <!-- 4.0: early alerts (#11) -->
     <string name="early_alerts_title">Early alerts</string>

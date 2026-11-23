@@ -58,7 +58,10 @@ class ReminderEditorViewModel(
     private var finished = false
 
     fun save() {
-        val draft = _draft.value.let { it.copy(earlyAlerts = it.earlyAlerts.filter { offset -> offset < it.repeat.shortestGapMinutes }) }
+        // The editor carries times of day through an interval while the user tries units out;
+        // an interval saved with them would only look different from one without.
+        val draft = _draft.value.withoutStrayTimes()
+            .let { it.copy(earlyAlerts = it.earlyAlerts.filter { offset -> offset < it.repeat.shortestGapMinutes }) }
         if (finished || !draft.isSchedulable) return
         finished = true
 

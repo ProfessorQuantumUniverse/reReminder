@@ -227,6 +227,12 @@
     <string name="editor_times_of_day">Uhrzeiten</string>
     <string name="editor_add_time">Uhrzeit hinzufügen</string>
     <string name="editor_remove_time">Uhrzeit entfernen</string>
+    <string name="editor_add_another_time">Weitere Uhrzeit</string>
+    <plurals name="editor_time_row">
+        <item quantity="one">Uhrzeit</item>
+        <item quantity="other">Uhrzeiten</item>
+    </plurals>
+    <string name="start_dialog_date_title">Beginnt am</string>
 
     <!-- 4.0: Vorab-Erinnerungen (#11) -->
     <string name="early_alerts_title">Vorab erinnern</string>

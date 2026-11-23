@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Schedule
@@ -182,7 +183,13 @@ internal fun WindowDialog(
 
 private enum class TimeTarget { START, END }
 
-/** Picks one time of day — a window's edge, or a time a calendar reminder goes off at. */
+/**
+ * Picks one time of day — a window's edge, or a time a calendar reminder goes off at.
+ *
+ * With [onAddAnother], a quiet "Another time" link under the clock keeps the picked time and moves
+ * on to a second one: how a reminder learns to go off twice a day without the editor showing a
+ * list to everyone who only ever needs one time.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun TimePickerDialog(
@@ -190,7 +197,9 @@ internal fun TimePickerDialog(
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit,
     title: String? = null,
+    onAddAnother: ((Int) -> Unit)? = null,
 ) {
+    val view = LocalView.current
     val time = Reminder.minuteToLocalTime(initialMinuteOfDay)
     val state = rememberTimePickerState(
         initialHour = time.hour,
@@ -203,8 +212,15 @@ internal fun TimePickerDialog(
         icon = { Icon(Icons.Rounded.Schedule, contentDescription = null) },
         title = title?.let { { Text(it) } },
         text = {
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 TimePicker(state = state)
+                if (onAddAnother != null) {
+                    TextButton(onClick = { view.tap(); onAddAnother(state.hour * 60 + state.minute) }) {
+                        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.editor_add_another_time))
+                    }
+                }
             }
         },
         confirmButton = {

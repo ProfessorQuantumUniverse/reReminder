@@ -79,15 +79,24 @@ fun formatCalendarDate(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault())
 @Composable
 fun formatStartMoment(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): String {
     if (epochMillis <= 0L) return stringResource(R.string.start_immediately)
+    return stringResource(R.string.schedule_summary, formatStartDate(epochMillis, zone), formatClockTime(epochMillis))
+}
+
+/**
+ * Only the day of a start, e.g. "Today" or "Wed, 24 Sept": what a calendar repeat shows, whose
+ * times of day have a row of their own.
+ */
+@Composable
+fun formatStartDate(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()): String {
+    if (epochMillis <= 0L) return stringResource(R.string.start_immediately)
 
     val date = Reminder.localDateTimeOf(epochMillis, zone).toLocalDate()
     val today = LocalDate.now(zone)
-    val dayLabel = when (date) {
+    return when (date) {
         today -> stringResource(R.string.start_today)
         today.plusDays(1) -> stringResource(R.string.start_tomorrow)
         else -> formatCalendarDate(epochMillis, zone)
     }
-    return stringResource(R.string.schedule_summary, dayLabel, formatClockTime(epochMillis))
 }
 
 /**
