@@ -1,12 +1,12 @@
 <resources>
     <string name="app_name" translatable="false">reReminder</string>
 
-    <!-- Timer list -->
+    <!-- Reminder list -->
     <string name="settings_title">Settings</string>
     <string name="settings_button_label">Settings</string>
     <string name="add_timer">New reminder</string>
     <string name="empty_title">No reminders yet</string>
-    <string name="empty_subtitle">Create a timer to get reminded on a loop, a stretch every 30 minutes, water every hour, whatever keeps you going.</string>
+    <string name="empty_subtitle">Create a reminder to get reminded on a loop, a stretch every 30 minutes, water every hour, whatever keeps you going.</string>
     <string name="empty_action">Create your first Reminder</string>
     <string name="master_all_reminders">All reminders</string>
     <string name="master_paused">Everything paused</string>
@@ -58,8 +58,8 @@
     <string name="editor_sound">Sound</string>
     <string name="editor_vibration">Vibrate</string>
     <string name="editor_alert_hint">Early alerts arrive as notifications. What \"Default\" sounds like is set in Settings.</string>
-    <string name="editor_delete">Delete timer</string>
-    <string name="editor_delete_confirm_title">Delete this timer?</string>
+    <string name="editor_delete">Delete reminder</string>
+    <string name="editor_delete_confirm_title">Delete this reminder?</string>
     <string name="editor_delete_confirm_text">"%1$s" will be removed and stop reminding you.</string>
     <string name="preset_weekdays">Mon–Fri</string>
     <string name="preset_every_day">Every day</string>

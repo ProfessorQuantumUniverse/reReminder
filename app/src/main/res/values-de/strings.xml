@@ -1,10 +1,10 @@
 <resources>
-    <!-- Timer list -->
+    <!-- Reminder list -->
     <string name="settings_title">Einstellungen</string>
     <string name="settings_button_label">Einstellungen</string>
     <string name="add_timer">Neue Erinnerung</string>
     <string name="empty_title">Noch keine Erinnerungen</string>
-    <string name="empty_subtitle">Lege einen Timer an, um im Loop erinnert zu werden, alle 30 Minuten strecken, jede Stunde trinken, was auch immer dich in Bewegung hält.</string>
+    <string name="empty_subtitle">Lege eine Erinnerung an, um im Loop erinnert zu werden, alle 30 Minuten strecken, jede Stunde trinken, was auch immer dich in Bewegung hält.</string>
     <string name="empty_action">Ersten Reminder anlegen</string>
     <string name="master_all_reminders">Alle Erinnerungen</string>
     <string name="master_paused">Alles pausiert</string>
@@ -56,8 +56,8 @@
     <string name="editor_sound">Ton</string>
     <string name="editor_vibration">Vibrieren</string>
     <string name="editor_alert_hint">Vorab-Erinnerungen kommen als Benachrichtigung. Wie \"Standard\" klingt, legst du in den Einstellungen fest.</string>
-    <string name="editor_delete">Timer löschen</string>
-    <string name="editor_delete_confirm_title">Diesen Timer löschen?</string>
+    <string name="editor_delete">Erinnerung löschen</string>
+    <string name="editor_delete_confirm_title">Diese Erinnerung löschen?</string>
     <string name="editor_delete_confirm_text">„%1$s“ wird entfernt und erinnert dich nicht mehr.</string>
     <string name="preset_weekdays">Mo–Fr</string>
     <string name="preset_every_day">Täglich</string>
