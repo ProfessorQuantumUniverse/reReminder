@@ -13,8 +13,8 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 import java.time.format.TextStyle
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
@@ -90,10 +90,23 @@ fun formatStartMoment(epochMillis: Long, zone: ZoneId = ZoneId.systemDefault()):
     return stringResource(R.string.schedule_summary, dayLabel, formatClockTime(epochMillis))
 }
 
-/** Formats minutes-from-midnight as a localised time, e.g. 510 -> "8:30". */
-fun formatMinuteOfDay(minuteOfDay: Int): String =
-    Reminder.minuteToLocalTime(minuteOfDay)
-        .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+/**
+ * Formats minutes-from-midnight as a clock time, e.g. 510 -> "8:30".
+ *
+ * Through the same formatter as [formatClockTime], so a time of day reads exactly like the start
+ * moment's time does — `java.time`'s localised patterns ignore the hour-cycle the user chose in
+ * the system settings and would show "7:00 PM" to someone who asked for a 24-hour clock.
+ */
+fun formatMinuteOfDay(minuteOfDay: Int): String {
+    val time = Reminder.minuteToLocalTime(minuteOfDay)
+    val calendar = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, time.hour)
+        set(Calendar.MINUTE, time.minute)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+    return formatClockTime(calendar.timeInMillis)
+}
 
 fun dayInitial(day: DayOfWeek): String =
     day.getDisplayName(TextStyle.NARROW, Locale.getDefault())
@@ -129,16 +142,23 @@ fun windowLabel(window: TimeWindow): String {
     return stringResource(R.string.schedule_summary, days, hours)
 }
 
+/** The times of day a calendar reminder goes off at, e.g. "7:00, 19:00". */
+fun timesLabel(minutesOfDay: List<Int>): String =
+    minutesOfDay.sorted().joinToString(", ") { formatMinuteOfDay(it) }
+
 /**
  * When a reminder may fire, in one short line: its window ("Mon–Fri · 9:00–17:00"), the number of
- * windows when there are several, the time of day for calendar repeats, or "Any time".
+ * windows when there are several, the times of day for calendar repeats, or "Any time".
  */
 @Composable
 fun scheduleSummary(reminder: Reminder): String = when {
-    reminder.repeat.isCalendar -> if (reminder.hasStartMoment) {
-        stringResource(R.string.schedule_at_time, formatClockTime(reminder.startAtMillis))
-    } else {
-        stringResource(R.string.schedule_needs_start)
+    reminder.repeat.isCalendar -> {
+        val times = reminder.calendarTimes()
+        if (times.isEmpty()) {
+            stringResource(R.string.schedule_needs_start)
+        } else {
+            stringResource(R.string.schedule_at_time, timesLabel(times))
+        }
     }
 
     reminder.windows.isEmpty() -> stringResource(R.string.editor_schedule_always)

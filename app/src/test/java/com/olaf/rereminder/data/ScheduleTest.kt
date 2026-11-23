@@ -331,6 +331,142 @@ class ScheduleTest {
         assertNull(reminder.next(at(2026, 1, 2, 0, 0)))
     }
 
+    // --- Several times a day -----------------------------------------------------------------
+
+    @Test
+    fun `twice a day at 07_00 and 19_00`() {
+        val reminder = Reminder(
+            id = 1,
+            repeat = Repeat(RepeatUnit.DAYS, 1, timesOfDay = setOf(7 * 60, 19 * 60)),
+            startAtMillis = at(2026, 10, 5, 0, 0),
+        )
+        assertEquals(at(2026, 10, 5, 7, 0), reminder.next(at(2026, 10, 5, 0, 0)))
+        assertEquals(at(2026, 10, 5, 19, 0), reminder.next(at(2026, 10, 5, 7, 0)))
+        assertEquals(at(2026, 10, 6, 7, 0), reminder.next(at(2026, 10, 5, 19, 0)))
+    }
+
+    @Test
+    fun `the start moment stays the floor when times are picked`() {
+        // Pinned to Monday 15:00: Monday's 07:00 is behind the start, so 19:00 comes first.
+        val reminder = Reminder(
+            id = 1,
+            repeat = Repeat(RepeatUnit.DAYS, 1, timesOfDay = setOf(7 * 60, 19 * 60)),
+            startAtMillis = at(2026, 10, 5, 15, 0),
+        )
+        assertEquals(at(2026, 10, 5, 19, 0), reminder.next(at(2026, 10, 1, 0, 0)))
+        assertEquals(at(2026, 10, 6, 7, 0), reminder.next(at(2026, 10, 5, 19, 0)))
+    }
+
+    @Test
+    fun `three times a day every other day keeps the date cycle`() {
+        val reminder = Reminder(
+            id = 1,
+            repeat = Repeat(RepeatUnit.DAYS, 2, timesOfDay = setOf(8 * 60, 13 * 60, 20 * 60)),
+            startAtMillis = at(2026, 10, 5, 0, 0),
+        )
+        // Monday's three, then Wednesday's: the Tuesday in between is not on the cycle.
+        assertEquals(at(2026, 10, 5, 13, 0), reminder.next(at(2026, 10, 5, 8, 0)))
+        assertEquals(at(2026, 10, 5, 20, 0), reminder.next(at(2026, 10, 5, 13, 0)))
+        assertEquals(at(2026, 10, 7, 8, 0), reminder.next(at(2026, 10, 5, 20, 0)))
+    }
+
+    @Test
+    fun `weekly on Thursday and Sunday at 15_00 and 17_00`() {
+        // Anchor: Thursday 8 Oct 2026.
+        val reminder = Reminder(
+            id = 1,
+            repeat = Repeat(RepeatUnit.WEEKS, 1, weekdays = setOf(4, 7), timesOfDay = setOf(15 * 60, 17 * 60)),
+            startAtMillis = at(2026, 10, 8, 0, 0),
+        )
+        assertEquals(at(2026, 10, 8, 15, 0), reminder.next(at(2026, 10, 8, 0, 0)))
+        assertEquals(at(2026, 10, 8, 17, 0), reminder.next(at(2026, 10, 8, 15, 0)))
+        // Thursday is done; Sunday picks the pair up again.
+        assertEquals(at(2026, 10, 11, 15, 0), reminder.next(at(2026, 10, 8, 17, 0)))
+        assertEquals(at(2026, 10, 11, 17, 0), reminder.next(at(2026, 10, 11, 15, 0)))
+        assertEquals(at(2026, 10, 15, 15, 0), reminder.next(at(2026, 10, 11, 17, 0)))
+    }
+
+    @Test
+    fun `every 2 weeks on Thursday and Sunday skips the week in between`() {
+        val reminder = Reminder(
+            id = 1,
+            repeat = Repeat(RepeatUnit.WEEKS, 2, weekdays = setOf(4, 7), timesOfDay = setOf(15 * 60, 17 * 60)),
+            startAtMillis = at(2026, 10, 8, 0, 0),
+        )
+        // Thu 8 and Sun 11 share a week, so both belong to the anchor's; the next pair is the 22nd.
+        assertEquals(at(2026, 10, 11, 17, 0), reminder.next(at(2026, 10, 11, 15, 0)))
+        assertEquals(at(2026, 10, 22, 15, 0), reminder.next(at(2026, 10, 11, 17, 0)))
+    }
+
+    @Test
+    fun `monthly on the 1st and the 15th, morning and evening`() {
+        val reminder = Reminder(
+            id = 1,
+            repeat = Repeat(RepeatUnit.MONTHS, 1, monthDays = setOf(1, 15), timesOfDay = setOf(8 * 60, 20 * 60)),
+            startAtMillis = at(2026, 11, 1, 0, 0),
+        )
+        assertEquals(at(2026, 11, 1, 20, 0), reminder.next(at(2026, 11, 1, 8, 0)))
+        assertEquals(at(2026, 11, 15, 8, 0), reminder.next(at(2026, 11, 1, 20, 0)))
+        assertEquals(at(2026, 12, 1, 8, 0), reminder.next(at(2026, 11, 15, 20, 0)))
+    }
+
+    @Test
+    fun `times of day survive a daylight saving change`() {
+        // Clocks go forward in Berlin on Sunday 29 March 2026.
+        val reminder = Reminder(
+            id = 1,
+            repeat = Repeat(RepeatUnit.DAYS, 1, timesOfDay = setOf(7 * 60, 19 * 60)),
+            startAtMillis = at(2026, 3, 27, 0, 0),
+        )
+        assertEquals(at(2026, 3, 29, 7, 0), reminder.next(at(2026, 3, 28, 19, 0)))
+        assertEquals(at(2026, 3, 29, 19, 0), reminder.next(at(2026, 3, 29, 7, 0)))
+        assertEquals(at(2026, 3, 30, 7, 0), reminder.next(at(2026, 3, 29, 19, 0)))
+    }
+
+    @Test
+    fun `a repeat without times of its own follows the start moment`() {
+        val reminder = Reminder(
+            id = 1,
+            repeat = Repeat(RepeatUnit.DAYS, 1),
+            startAtMillis = at(2026, 10, 5, 9, 30),
+        )
+        assertEquals(listOf(9 * 60 + 30), reminder.calendarTimes(zone))
+        assertEquals(at(2026, 10, 6, 9, 30), reminder.next(at(2026, 10, 5, 9, 30)))
+    }
+
+    @Test
+    fun `the shortest gap counts the times of day, not just the dates`() {
+        // 07:00 and 09:00 every day: two hours apart, not twenty-four.
+        assertEquals(120L, Repeat(RepeatUnit.DAYS, 1, timesOfDay = setOf(7 * 60, 9 * 60)).shortestGapMinutes)
+        // 07:00 and 19:00 are twelve hours apart either way round.
+        assertEquals(720L, Repeat(RepeatUnit.DAYS, 1, timesOfDay = setOf(7 * 60, 19 * 60)).shortestGapMinutes)
+        // Weekly on Thursday and Sunday at 15:00 and 17:00: the two times of one day are closer
+        // to each other than Thursday evening is to Sunday afternoon.
+        assertEquals(
+            120L,
+            Repeat(RepeatUnit.WEEKS, 1, weekdays = setOf(4, 7), timesOfDay = setOf(15 * 60, 17 * 60)).shortestGapMinutes,
+        )
+    }
+
+    @Test
+    fun `an early alert longer than the gap between two times is ignored`() {
+        val reminder = Reminder(
+            id = 1,
+            repeat = Repeat(RepeatUnit.DAYS, 1, timesOfDay = setOf(7 * 60, 9 * 60)),
+            startAtMillis = at(2026, 10, 5, 0, 0),
+            earlyAlerts = listOf(180, 30),
+        )
+        // 3 h would land before the previous event, 30 min announces each of them.
+        assertEquals(
+            Alert(at(2026, 10, 5, 6, 30), at(2026, 10, 5, 7, 0), 30),
+            reminder.nextAlertAfter(at(2026, 10, 5, 0, 0), zone),
+        )
+        assertEquals(
+            Alert(at(2026, 10, 5, 8, 30), at(2026, 10, 5, 9, 0), 30),
+            reminder.nextAlertAfter(at(2026, 10, 5, 7, 0), zone),
+        )
+    }
+
     // --- Early alerts ------------------------------------------------------------------------
 
     @Test

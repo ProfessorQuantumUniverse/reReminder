@@ -182,12 +182,14 @@ internal fun WindowDialog(
 
 private enum class TimeTarget { START, END }
 
+/** Picks one time of day — a window's edge, or a time a calendar reminder goes off at. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TimePickerDialog(
+internal fun TimePickerDialog(
     initialMinuteOfDay: Int,
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit,
+    title: String? = null,
 ) {
     val time = Reminder.minuteToLocalTime(initialMinuteOfDay)
     val state = rememberTimePickerState(
@@ -199,6 +201,7 @@ private fun TimePickerDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Rounded.Schedule, contentDescription = null) },
+        title = title?.let { { Text(it) } },
         text = {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 TimePicker(state = state)
